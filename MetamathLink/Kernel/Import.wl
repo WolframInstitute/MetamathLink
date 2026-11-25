@@ -154,7 +154,13 @@ axiomDeclarations[context_, statement_Association] := With[{label = statement["L
 		True,
 			Replace[definitionOf[context, label], {
 				definition_Association :> With[{constructor = constructorDefinition[context, label, definition]},
-					With[{defined = Append[context, "Definitions" -> Append[context["Definitions"], definition["Constructor"] -> constructor]]},
+					With[
+						{
+							defined = Join[context, <|
+								"Definitions" -> Append[context["Definitions"], definition["Constructor"] -> constructor],
+								"DefinitionAxioms" -> Append[Lookup[context, "DefinitionAxioms", <||>], label -> definition]
+							|>]
+						},
 						checkedDeclarations[
 							{
 								If[ MemberQ[context["Semantics"]["LibraryDefinitions"], definition["Constructor"]],
@@ -211,7 +217,8 @@ theoremDeclarations[context_, statement_Association] := checkedDeclarations[
    proof to rename: its variant must be proved by the semantics *)
 addVariant[failure_Failure, _] := failure
 
-(* a variant of an axiom: proved by the semantics, or assumed when the import assumes what it cannot prove *)
+(* a variant of an axiom: a defining axiom's by reflexivity, another proved by the semantics, or assumed when the import
+   assumes what it cannot prove *)
 axiomVariant[{declarations_List, context_Association}, label_String, renaming_Association, name_String] := With[
 	{
 		extended = Join[context, <|
@@ -220,14 +227,21 @@ axiomVariant[{declarations_List, context_Association}, label_String, renaming_As
 		|>]
 	},
 	Which[
+		(* its constructor's variant is defined by the renamed right side, so its two sides are one term *)
+		KeyExistsQ[Lookup[context, "DefinitionAxioms", <||>], label],
+			With[{definition = context["DefinitionAxioms"][label]},
+				declareVariant[
+					{declarations, extended},
+					name,
+					TypeTheoryTheorem,
+					reapVariants[{statementTerm[extended, name], definitionProofTerm[extended, name, Append[definition, "Left" -> renameTree[definition["Left"], renaming]]]}]
+				]
+			],
 		KeyExistsQ[context["Semantics"]["AxiomVariants"], name],
-			Replace[checkedDeclarations[{declarationOf[TypeTheoryTheorem, name, statementTerm[extended, name], context["Semantics"]["AxiomVariants"][name]]}, extended], {
-				{{variant_}, next_} :> {Append[declarations, variant], next},
-				failure_Failure :> failure
-			}],
+			declareVariant[{declarations, extended}, name, TypeTheoryTheorem, reapVariants[{statementTerm[extended, name], context["Semantics"]["AxiomVariants"][name]}]],
 		context["UnprovedAxioms"] === "Assume",
-			Replace[checkedDeclarations[{declarationOf[TypeTheoryAxiom, name, statementTerm[extended, name]]}, extended], {
-				{{variant_}, next_} :> {Append[declarations, variant], Append[next, "AssumedVariants" -> Append[Lookup[next, "AssumedVariants", {}], name]]},
+			Replace[declareVariant[{declarations, extended}, name, TypeTheoryAxiom, reapVariants[{statementTerm[extended, name]}]], {
+				{inner_List, next_Association} :> {inner, Append[next, "AssumedVariants" -> Append[Lookup[next, "AssumedVariants", {}], name]]},
 				failure_Failure :> failure
 			}],
 		True,
@@ -237,6 +251,19 @@ axiomVariant[{declarations_List, context_Association}, label_String, renaming_As
 			|>]
 	]
 ]
+
+(* the declaration of a variant from its terms, after the variants they ask for *)
+declareVariant[{declarations_List, context_Association}, name_String, head_, {terms_List, variants_List}] := Replace[
+	Fold[addVariant, {declarations, context}, variants],
+	{
+		{inner_List, next_Association} :> Replace[checkedDeclarations[{declarationOf[head, name, Sequence @@ terms]}, next], {
+			{{variant_}, final_Association} :> {Append[inner, variant], final},
+			failure_Failure :> failure
+		}],
+		failure_Failure :> failure
+	}
+]
+
 addVariant[{declarations_List, context_Association}, {label_String, renaming_Association}] := With[{name = variantLabel[label, renaming]},
 	Which[
 		KeyExistsQ[Lookup[context, "Variants", <||>], name],

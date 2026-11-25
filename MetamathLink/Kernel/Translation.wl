@@ -58,6 +58,7 @@ PackageScoped[proofTermWithVariants]
 PackageScoped[variantLabel]
 PackageScoped[variantEntry]
 PackageScoped[variantConstructorDefinition]
+PackageScoped[renameTree]
 PackageScoped[definitionOf]
 PackageScoped[heldTerm]
 PackageScoped[translationContext]
@@ -79,6 +80,7 @@ statementTerm::usage = "statementTerm[context, label] gives the statement of the
 proofTerm::usage = "proofTerm[context, label] gives the proof term of the theorem label as an inactive term, or a Failure."
 proofTermWithVariants::usage = "proofTermWithVariants[context, label] gives {term, variants}: the proof term and the variants {assertion, renaming} it applies."
 variantLabel::usage = "variantLabel[label, renaming] gives the name of the variant of the assertion label with its setvar variables renamed, label{z:=y}."
+renameTree::usage = "renameTree[tree, renaming] gives the parse tree with its variables renamed."
 variantConstructorDefinition::usage = "variantConstructorDefinition[context, constructor, renaming] gives the definition record of the constructor with \
 its setvar parameters renamed, merged: its parameters, dependencies and right side, and the context with its defining axiom's variant."
 variantEntry::usage = "variantEntry[context, label, renaming] gives the statement of the variant: the assertion's frame with the renamed variables merged."
