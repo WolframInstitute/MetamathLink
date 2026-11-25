@@ -527,11 +527,19 @@ proofTermOf[context_, label_String] := Module[
 	(* a saved step is a function of the proof's setvar variables, applied where it is used, which may be under binders
 	   that bind some of them again; every other step is a term in them, the dummy ones bound to an inhabitant *)
 	lets = Map[
-		Function[saved, Inactive[Set][stepSymbol[First[saved]], termFunction[setvarBinders[local, setvars], stepTerm[local, Last[saved]]]]],
+		Function[saved,
+			Inactive[Set][
+				stepSymbol[First[saved]],
+				termTyped[
+					termFunction[setvarBinders[local, setvars], stepTerm[local, First[Last[saved]]]],
+					termForAll[setvarBinders[local, setvars], translateTree[local, frame["Dependencies"], Last[Last[saved]]]]
+				]
+			]
+		],
 		run["Saved"]
 	];
 	final = Fold[
-		Function[{body, dummy}, Inactive[With][{Inactive[Set][variableSymbol[dummy], dummyInhabitant[local, dummy]]}, body]],
+		Function[{body, dummy}, Inactive[With][{Inactive[Set][variableSymbol[dummy], termTyped[dummyInhabitant[local, dummy], typecodeType[local, variableTypecode[local, dummy]]]]}, body]],
 		stepTerm[local, run["Result"]],
 		Reverse[Drop[setvars, Length[frame["Setvars"]]]]
 	];
@@ -640,7 +648,7 @@ runProof[context_, label_String] := Module[
 				(* a saved proof step is let-bound once and used by name; a saved syntax tree is copied *)
 				markStep[_Integer],
 					If[ MatchQ[Last[stack], proofItem[_, _]],
-						AppendTo[savedProofs, Length[savedProofs] + 1 -> First[Last[stack]]];
+						AppendTo[savedProofs, Length[savedProofs] + 1 -> {First[Last[stack]], Last[Last[stack]]}];
 						stack = Append[Most[stack], proofItem[savedStep[Length[savedProofs]], Last[Last[stack]]]]
 					];
 					saved[First[step]] = Last[stack],

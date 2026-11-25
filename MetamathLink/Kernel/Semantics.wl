@@ -24,6 +24,8 @@ A semantics is an association:
 	"AxiomVariants"            name -> HoldComplete[proof]: the variants of axioms with setvar variables identified, ax-7{z:=y}
 	"DefinitionHeads"          the syntax of the defining axioms, ( C <-> D ) and C = D
 	"Reflexivity"              head -> the reflexivity that proves a defining axiom of that head
+	"EqualityType"             the type of the equalities a translation makes, "Class" for set.mm's A = B
+	"TypeLevels"               the universe of each such type, for the levels of Equal and Exists in core terms
 *)
 
 
@@ -70,6 +72,8 @@ metamathSemantics["Axiomatic"] := <|
 	"LibraryDefinitions" -> {},
 	"AxiomVariants" -> <||>,
 	"DefinitionHeads" -> {},
+	"EqualityType" -> None,
+	"TypeLevels" -> <||>,
 	"Reflexivity" -> <||>
 |>
 
@@ -109,6 +113,8 @@ metamathSemantics["ZFC"] := <|
 	"LibraryDefinitions" -> {"wsb"},
 	"AxiomVariants" -> $zfcAxiomVariants,
 	"DefinitionHeads" -> {"wb", "wceq"},
+	"EqualityType" -> "Class",
+	"TypeLevels" -> <|"Set" -> 2, "Class" -> 2|>,
 	"Reflexivity" -> <|"wb" -> "equivalentReflexivity", "wceq" -> "equalityReflexivity"|>
 |>
 
@@ -151,6 +157,23 @@ $zfcAxiomVariants := <|
 		Typed["falseElimination"[n["equalitySymmetry"[e]]], ForAll[{Typed[x, "Set"]}, "setClass"[y] == "setClass"[x]]]
 	]],
 	"ax-13{z:=y}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[n, Not["setClass"[x] == "setClass"[y]]], Typed[e, "setClass"[y] == "setClass"[y]], Typed[w, "Set"]}, e]],
+	(* x e. { x | ph } <-> [ x / x ] ph: the substitution's variant takes ph at x itself *)
+	"df-clab{y:=x}" -> HoldComplete[Function[{Typed[\[CurlyPhi], TypeSpecifier[{"Set"} -> TypeUniverse[0]]], Typed[x, "Set"]},
+		With[{membership = "classElementSetClass"[x, "classAbstraction"[Function[{Typed[v, "Set"]}, \[CurlyPhi][v]]]]},
+			"equivalentIntroduction"[
+				Function[
+					{
+						Typed[m, "classElement"["setClass"[x], "classAbstraction"[Function[{Typed[v, "Set"]}, \[CurlyPhi][v]]]]],
+						Typed[y, "Set"], Typed[e, "setClass"[y] == "setClass"[x]], Typed[w, "Set"], Typed[f, "setClass"[w] == "setClass"[y]]
+					},
+					Construct["equalitySubstitution", "Set", \[CurlyPhi], x, w, "equalitySymmetry"["setClassInjective"[w, x, "equalityTransitivity"[f, e]]], membership[[1]][m]]
+				],
+				Function[{Typed[k, "wsb{t:=x}"[Function[{Typed[v, "Set"]}, \[CurlyPhi][v]], x]]},
+					membership[[2]][k[x, "equalityReflexivity"["setClass"[x]], x, "equalityReflexivity"["setClass"[x]]]]
+				]
+			]
+		]
+	]],
 	"ax-13{y:=x,z:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[n, Not["setClass"[x] == "setClass"[x]]]},
 		Typed["falseElimination"[n["equalityReflexivity"["setClass"[x]]]], Implies["setClass"[x] == "setClass"[x], ForAll[{Typed[x, "Set"]}, "setClass"[x] == "setClass"[x]]]]
 	]]

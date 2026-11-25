@@ -40,7 +40,8 @@ every proof checked again by TypeTheory's kernel.\nMetamathToTypeTheory[object] 
 MetamathToTypeTheory[File[\"database.wxf\"]] imports a database MetamathLink saved, with no network.\n\
 Options: \"Semantics\" -> \"Axiomatic\" or \"ZFC\" (Automatic: \"ZFC\" when the database has set.mm's setvar typecode); \"Through\" -> label, the last \
 statement to import (All: every one); \"UnprovedAxioms\" -> \"Fail\" or \"Assume\", whether an axiom the semantics does not prove stops the import or is \
-declared as an axiom."
+declared as an axiom; Method -> \"Core\" or \"Surface\", whether declarations are given to TypeTheory's kernel as core terms, the \
+kernel's own form, or in surface syntax, elaborated first."
 metamathDeclarations::usage = "metamathDeclarations[context, label] gives the declarations the statement label adds and the context after it, or a Failure."
 libraryCheck::usage = "libraryCheck[declaration] in the declarations of a statement is a theorem that checks a constant of the environment against the \
 translation, added to a copy of the environment that is not kept."
@@ -50,7 +51,7 @@ translation, added to a copy of the environment that is not kept."
 (*Function Definitions*)
 
 
-Options[MetamathToTypeTheory] = {"Semantics" -> Automatic, "Through" -> All, "UnprovedAxioms" -> "Fail"}
+Options[MetamathToTypeTheory] = {"Semantics" -> Automatic, "Through" -> All, "UnprovedAxioms" -> "Fail", Method -> "Core"}
 
 MetamathToTypeTheory[File[path_String], options : OptionsPattern[]] := MetamathToTypeTheory[metamathDatabase[File[path]], options]
 
@@ -61,11 +62,13 @@ MetamathToTypeTheory[database_Association /; KeyExistsQ[database, "Grammar"], op
 		semantics = metamathSemantics[Replace[OptionValue["Semantics"], Automatic :> If[MemberQ[Values[database["Statements"]], KeyValuePattern["Typecode" -> "setvar"]], "ZFC", "Axiomatic"]]],
 		labels = Replace[OptionValue["Through"], {All :> database["Order"], last_String :> Take[database["Order"], UpTo[First[FirstPosition[database["Order"], last, {Length[database["Order"]]}]]]]}]
 	},
-	First[Fold[
-		addStatement,
-		{semantics["Environment"], Append[translationContext[database, semantics], "UnprovedAxioms" -> OptionValue["UnprovedAxioms"]]},
-		labels
-	]]
+	Block[{$declarationMethod = OptionValue[Method], $declarationSemantics = semantics},
+		First[Fold[
+			addStatement,
+			{semantics["Environment"], Append[translationContext[database, semantics], "UnprovedAxioms" -> OptionValue["UnprovedAxioms"]]},
+			labels
+		]]
+	]
 ]
 
 addStatement[{failure_Failure, context_}, _] := {failure, context}
@@ -164,7 +167,7 @@ axiomDeclarations[context_, statement_Association] := With[{label = statement["L
 						checkedDeclarations[
 							{
 								If[ MemberQ[context["Semantics"]["LibraryDefinitions"], definition["Constructor"]],
-									libraryCheck[declarationOf[
+									libraryCheck[surfaceDeclarationOf[
 										TypeTheoryTheorem,
 										"metamathLibraryCheck",
 										Inactive[Equal][definition["Constructor"], Catch[constructorValue[context, label, constructor, definition["Right"]], "translation"]],
@@ -318,8 +321,20 @@ addVariant[{declarations_List, context_Association}, {"syntax", constructor_Stri
 
 checkedDeclarations[declarations_List, context_] := Replace[FirstCase[declarations, _Failure, Missing["NotFound"], {1, 2}], {Missing["NotFound"] :> {declarations, context}, failure_ :> failure}]
 
-(* a declaration from inactive terms, activated inside HoldComplete; a Failure of the translation passes through *)
+(* a declaration from inactive terms: in core terms, which the kernel takes as they are, unless a term has no core form
+   or the import asks for surface syntax; then activated inside HoldComplete. A Failure of the translation passes through *)
 declarationOf[head_, name_String, terms___] := Replace[FirstCase[{terms}, _Failure], {
+	Missing["NotFound"] :> Replace[
+		If[$declarationMethod === "Core", coreDeclaration[$declarationSemantics, head, name, terms], None],
+		None :> surfaceDeclarationOf[head, name, terms]
+	],
+	failure_ :> failure
+}]
+
+surfaceDeclarationOf[head_, name_String, terms___] := Replace[FirstCase[{terms}, _Failure], {
 	Missing["NotFound"] :> Replace[Join @@ Map[heldTerm, {terms}], HoldComplete[held___] :> head[name, held]],
 	failure_ :> failure
 }]
+
+$declarationMethod = "Surface"
+$declarationSemantics = <||>
