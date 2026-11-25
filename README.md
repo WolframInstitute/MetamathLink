@@ -20,7 +20,8 @@ Export["demo0.tte", env]                                 (* TypeTheory's Format 
 
 - **Axiomatic**, any database: `wff` is `Prop`, every other typecode a declared type, every syntax axiom a declared
   constant and every logical axiom an axiom of the environment (`demo0.mm`).
-- **ZFC**, set.mm over `TypeTheoryEnvironment["ZFC"]`, Aczel's model of ZFC in TypeTheory's library: `setvar` is `"Set"`,
+- **ZFC**, set.mm over `TypeTheoryEnvironment["ZFC"]`, Aczel's model of ZFC in TypeTheory's library, with set.mm's axioms
+  proved over it under their labels (`SetmmLibrary.wl`): `setvar` is `"Set"`,
   `class` is `"Class"`, `wff` is `Prop`. The primitive syntax denotes the connectives (native `Implies`, `And`, `Or`,
   `Equivalent`, `ForAll`, `Exists`) and the class vocabulary of the model (`"setClass"`, `"classElement"`,
   `"classAbstraction"`, `==`); every other syntax axiom is defined by its `df-` axiom, which becomes a theorem by
@@ -56,6 +57,7 @@ Declarations reach TypeTheory's kernel as core terms, its own locally nameless f
 | `Kernel/Database.wl` | the statements of a MetamathObject, the grammar of the syntax axioms and the parser, compressed proofs |
 | `Kernel/Translation.wl` | frames, statements and proof terms, definitions, variants |
 | `Kernel/Semantics.wl` | the Axiomatic and ZFC semantics |
+| `Kernel/SetmmLibrary.wl` | set.mm's axioms as theorems over the ZFC environment, with no axiom of their own |
 | `Kernel/Core.wl` | the terms as TypeTheory's core terms |
 | `Kernel/Import.wl` | `MetamathToTypeTheory` |
 

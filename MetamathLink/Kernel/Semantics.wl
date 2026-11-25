@@ -6,9 +6,11 @@ axiom denotes and how each axiom is proved.
 
 	"Axiomatic"   any database: wff is Prop, every other typecode a declared type, every syntax axiom a declared constant
 	              and every logical axiom an axiom of the environment
-	"ZFC"         set.mm over TypeTheoryEnvironment["ZFC"]: setvar is "Set", class "Class" and wff Prop; the primitive
-	              syntax denotes the connectives, the quantifiers and the class vocabulary of the ZFC library, the other
-	              syntax is defined by its df- axiom, and every axiom is a theorem
+	"ZFC"         set.mm over setmmEnvironment[], TypeTheoryEnvironment["ZFC"] with set.mm's axioms as theorems
+	              (SetmmLibrary.wl): setvar is "Set", class "Class" and wff Prop; the primitive syntax denotes the
+	              connectives, the quantifiers and the class vocabulary of the ZFC library, the other syntax is defined
+	              by its df- axiom, and every axiom is a theorem: of the library, under its label, or an ax-NAME
+	              justified by the earlier theorem axNAME of the same statement, as set.mm's complex numbers are
 
 A semantics is an association:
 
@@ -83,7 +85,7 @@ binding[variable_] := {Inactive[Typed][setSymbol[variable], "Set"]}
 
 metamathSemantics["ZFC"] := <|
 	"Name" -> "ZFC",
-	"Environment" :> TypeTheoryEnvironment["ZFC"],
+	"Environment" :> setmmEnvironment[],
 	"BinderTypecodes" -> {"setvar"},
 	"TypecodeTypes" -> <|"setvar" -> "Set", "class" -> "Class", "wff" -> Inactive[TypeUniverse][0]|>,
 	"Inhabitants" -> <|"setvar" -> "emptySet", "wff" -> True, "class" -> "setClass"["emptySet"]|>,
