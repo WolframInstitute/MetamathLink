@@ -306,6 +306,7 @@ variantConstructorDefinition[context_, constructor_String, renaming_Association]
 						<|
 							"Constructor" -> variantLabel[constructor, renaming],
 							"Label" -> label,
+							"Typecode" -> definition["Typecode"],
 							"Context" -> extended,
 							"Parameters" -> parameters,
 							"SetvarParameters" -> setvarParameters,
@@ -472,6 +473,7 @@ constructorDefinition[context_, label_String, definition_Association] := With[
 				<|
 					"Constructor" -> definition["Constructor"],
 					"Label" -> label,
+					"Typecode" -> statementOf[context, definition["Constructor"]]["Typecode"],
 					"Parameters" -> parameters,
 					"SetvarParameters" -> setvarParameters,
 					"ValueParameters" -> Select[setvarParameters, Function[setvar, MemberQ[free, variableSymbol[setvar]]]],
@@ -483,27 +485,33 @@ constructorDefinition[context_, label_String, definition_Association] := With[
 	]
 ]
 
-(* the value of the constructor: a function of its value and function parameters, the right side in their terms *)
+(* the value of the constructor, typed: a function of its value and function parameters, the right side in their terms,
+   from them to the type of the constructor's typecode *)
 constructorValue[context_, label_String, constructor_Association, right_] := With[
 	{
 		local = Join[context, <|"VariableTypecodes" -> variableTypecodesOf[context, label], "Scope" -> constructor["ValueParameters"]|>],
 		typecodes = variableTypecodesOf[context, label]
 	},
-	termFunction[
-		Catenate[Map[
-			Function[parameter,
-				Which[
-					MemberQ[constructor["ValueParameters"], parameter],
-						{termTyped[variableSymbol[parameter], setType[context]]},
-					MemberQ[constructor["SetvarParameters"], parameter],
-						{},
-					True,
-						{termTyped[variableSymbol[parameter], parameterType[context, typecodes[parameter], constructor["Dependencies"][parameter]]]}
-				]
-			],
-			constructor["Parameters"]
-		]],
-		translateTree[local, constructor["Dependencies"], right]
+	With[
+		{
+			binders = Catenate[Map[
+				Function[parameter,
+					Which[
+						MemberQ[constructor["ValueParameters"], parameter],
+							{termTyped[variableSymbol[parameter], setType[context]]},
+						MemberQ[constructor["SetvarParameters"], parameter],
+							{},
+						True,
+							{termTyped[variableSymbol[parameter], parameterType[context, typecodes[parameter], constructor["Dependencies"][parameter]]]}
+					]
+				],
+				constructor["Parameters"]
+			]]
+		},
+		termTyped[
+			termFunction[binders, translateTree[local, constructor["Dependencies"], right]],
+			termForAll[binders, typecodeType[context, constructor["Typecode"]]]
+		]
 	]
 ]
 

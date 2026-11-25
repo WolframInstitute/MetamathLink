@@ -71,6 +71,16 @@ coreDeclaration[semantics_Association, head_, name_String, terms___] := With[{co
 	]
 ]
 
+(* a definition takes its value with its type, Typed[value, type], both core terms *)
+coreDeclaration[semantics_Association, TypeTheoryDefinition, name_String, Inactive[Typed][value_, type_]] := With[
+	{cores = {coreTerm[semantics, value], coreTerm[semantics, type]}},
+	If[ AnyTrue[cores, FailureQ],
+		None,
+		(* the declaration holds its arguments: the parts go in by With *)
+		With[{coreValue = First[cores], coreType = Last[cores]}, TypeTheoryDefinition[name, Typed[coreValue, coreType]]]
+	]
+]
+
 noCoreForm[term_] := Throw[Failure["NoCoreForm", <|"MessageTemplate" -> "`1` has no core form here.", "MessageParameters" -> {Short[HoldForm[term], 2]}|>], "core"]
 
 constant[name_] := coreHead["constantReference"][HoldComplete[name], {}]

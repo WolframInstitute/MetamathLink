@@ -25,7 +25,7 @@ VerificationTest[
 
 (* the propositional calculus of set.mm: its axioms are theorems of the ZFC library, an intuitionistic theorem needs no
    axiom and one that uses ax-3 needs the prelude's classical ones *)
-propositional = MetamathToTypeTheory[File[FileNameJoin[{data, "setmm-propositional.mm"}]], "Through" -> "pm2.18"]
+propositional = MetamathToTypeTheory[File[FileNameJoin[{data, "setmm-propositional.mm"}]], "Through" -> "dfifp2"]
 
 VerificationTest[
 	{
@@ -42,6 +42,17 @@ VerificationTest[
 	},
 	{TypeTheoryEnvironment, {}, {"choice", "propositionalExtensionality", "quotientSoundness"}, True},
 	TestID -> "set.mm's-propositional-calculus-in-the-ZFC-semantics"
+]
+
+(* df-ifp defines set.mm's conditional operator: a definition, and its axiom a theorem by reflexivity *)
+VerificationTest[
+	{
+		MatchQ[TypeTheoryCheck[propositional], _Success],
+		Keys[TypeTheoryAxiomClosure[TypeTheoryTerm["df-ifp", propositional]]],
+		Sort[Keys[TypeTheoryAxiomClosure[TypeTheoryTerm["dfifp2", propositional]]]]
+	},
+	{True, {}, {"choice", "propositionalExtensionality", "quotientSoundness"}},
+	TestID -> "A-df-axiom-is-a-definition-and-a-theorem-by-reflexivity"
 ]
 
 (* a proof that does not prove its statement: the statement of th1 changed, and a proof step changed *)
