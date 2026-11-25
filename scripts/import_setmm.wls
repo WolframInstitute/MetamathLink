@@ -53,7 +53,8 @@ Print["axioms beyond the prelude's: ", Complement[Information[environment, "Axio
 
 Scan[
 	Function[label,
-		Print[label, ": ", InputForm[First[TypeTheoryType[TypeTheoryTerm @@ {label, environment}]]]];
+		(* the statement stays inside its TypeTheoryTerm: taken out, it would evaluate *)
+		Print[label, ": ", TypeTheoryType[TypeTheoryTerm @@ {label, environment}]];
 		Print["    closure: ", Keys[TypeTheoryAxiomClosure[TypeTheoryTerm @@ {label, environment}]]]
 	],
 	labels
