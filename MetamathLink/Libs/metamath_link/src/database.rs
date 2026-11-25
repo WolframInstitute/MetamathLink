@@ -259,13 +259,7 @@ fn converted_statement(
                 .expect("an assertion that verifies has a frame");
             let variable =
                 |index: usize| text(database.name_result().atom_name(frame.var_list[index]));
-            // each pair in the order of the frame's variables, which is the order of its floating hypotheses
-            let disjoint = frame
-                .mandatory_dv
-                .iter()
-                .map(|&(first, second)| (variable(first.min(second)), variable(first.max(second))))
-                .collect();
-            let floating = frame
+            let floating: Vec<(String, String, String)> = frame
                 .hypotheses
                 .iter()
                 .filter_map(|hypothesis| match hypothesis {
@@ -279,6 +273,29 @@ fn converted_statement(
                     }
                     Hyp::Essential(..) => None,
                 })
+                .collect();
+            // a set of unordered pairs, which the translation reads as such: each pair, and the pairs, in the order of
+            // the floating hypotheses of their variables, every one of which is mandatory
+            let position = |index: usize| {
+                let name = variable(index);
+                floating
+                    .iter()
+                    .position(|(_, _, variable)| *variable == name)
+                    .expect("a mandatory disjoint variable has a mandatory floating hypothesis")
+            };
+            let mut pairs: Vec<(usize, usize)> = frame
+                .mandatory_dv
+                .iter()
+                .map(|&(first, second)| {
+                    let (first, second) = (position(first), position(second));
+                    (first.min(second), first.max(second))
+                })
+                .collect();
+            pairs.sort_unstable();
+            pairs.dedup();
+            let disjoint = pairs
+                .into_iter()
+                .map(|(first, second)| (floating[first].2.clone(), floating[second].2.clone()))
                 .collect();
             let essential = frame
                 .hypotheses
