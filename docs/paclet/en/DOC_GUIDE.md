@@ -10,8 +10,8 @@ returns, one output per cell.
 
 What is particular to MetamathLink:
 
-- A database comes from a file in `MetamathLink/Data` or a `.wxf` database MetamathLink saved, so that pages build with
-  no network: `demo0.mm`, set.mm's propositional calculus `setmm-propositional.mm`, and `setmm-2p2e4.wxf`, the
+- A database comes from a file in `MetamathLink/Data` or a `.wxf` database MetamathLink saved, so that pages need
+  no download of set.mm: `demo0.mm`, set.mm's propositional calculus `setmm-propositional.mm`, and `setmm-2p2e4.wxf`, the
   statements of set.mm that 2p2e4 needs.
 - TypeTheory's terms display as TypeTheory shows them: an environment as its summary box, a statement as a term.
 - The tutorial runs in one context; every other page runs each section, and each example between `---`, in a clean one.
