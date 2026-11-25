@@ -222,7 +222,7 @@ addVariant[failure_Failure, _] := failure
 axiomVariant[{declarations_List, context_Association}, label_String, renaming_Association, name_String] := With[
 	{
 		extended = Join[context, <|
-			"Database" -> Append[context["Database"], "Statements" -> Append[context["Database"]["Statements"], name -> variantEntry[context, label, renaming]]],
+			"VariantStatements" -> Append[Lookup[context, "VariantStatements", <||>], name -> variantEntry[context, label, renaming]],
 			"Variants" -> Append[Lookup[context, "Variants", <||>], name -> True]
 		|>]
 	},
@@ -268,13 +268,13 @@ addVariant[{declarations_List, context_Association}, {label_String, renaming_Ass
 	Which[
 		KeyExistsQ[Lookup[context, "Variants", <||>], name],
 			{declarations, context},
-		context["Database"]["Statements"][label]["Kind"] =!= "Theorem",
+		statementOf[context, label]["Kind"] =!= "Theorem",
 			axiomVariant[{declarations, context}, label, renaming, name],
 		True,
 			With[
 				{
 					extended = Join[context, <|
-						"Database" -> Append[context["Database"], "Statements" -> Append[context["Database"]["Statements"], name -> variantEntry[context, label, renaming]]],
+						"VariantStatements" -> Append[Lookup[context, "VariantStatements", <||>], name -> variantEntry[context, label, renaming]],
 						"Variants" -> Append[Lookup[context, "Variants", <||>], name -> True]
 					|>]
 				},

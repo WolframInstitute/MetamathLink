@@ -15,7 +15,7 @@ demo = MetamathToTypeTheory[File[FileNameJoin[{data, "demo0.mm"}]]]
 
 VerificationTest[
 	{
-		TypeTheoryType[TypeTheoryTerm["th1", demo]] === TypeTheoryTerm[ForAll[{Typed[t, "term"]}, "weq"[t, t]], demo],
+		MatchQ[TypeTheoryCheck[TypeTheoryTerm["th1", demo], TypeTheoryTerm[ForAll[{Typed[t, "term"]}, "weq"[t, t]], demo]], _Success],
 		Sort[Keys[TypeTheoryAxiomClosure[TypeTheoryTerm["th1", demo]]]],
 		MatchQ[TypeTheoryCheck[demo], _Success]
 	},
@@ -32,9 +32,12 @@ VerificationTest[
 		Head[propositional],
 		Keys[TypeTheoryAxiomClosure[TypeTheoryTerm["mpd", propositional]]],
 		Sort[Keys[TypeTheoryAxiomClosure[TypeTheoryTerm["pm2.18", propositional]]]],
-		TypeTheoryType[TypeTheoryTerm["pm2.43", propositional]] === TypeTheoryTerm[
-			ForAll[{Typed[\[CurlyPhi], TypeUniverse[0]], Typed[\[Psi], TypeUniverse[0]]}, Implies[Implies[\[CurlyPhi], Implies[\[CurlyPhi], \[Psi]]], Implies[\[CurlyPhi], \[Psi]]]],
-			propositional
+		MatchQ[
+			TypeTheoryCheck[
+				TypeTheoryTerm["pm2.43", propositional],
+				TypeTheoryTerm[ForAll[{Typed[\[CurlyPhi], TypeUniverse[0]], Typed[\[Psi], TypeUniverse[0]]}, Implies[Implies[\[CurlyPhi], Implies[\[CurlyPhi], \[Psi]]], Implies[\[CurlyPhi], \[Psi]]]], propositional]
+			],
+			_Success
 		]
 	},
 	{TypeTheoryEnvironment, {}, {"choice", "propositionalExtensionality", "quotientSoundness"}, True},

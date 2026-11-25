@@ -59,6 +59,8 @@ PackageScoped[variantLabel]
 PackageScoped[variantEntry]
 PackageScoped[variantConstructorDefinition]
 PackageScoped[renameTree]
+PackageScoped[statementOf]
+PackageScoped[withVariantStatement]
 PackageScoped[definitionOf]
 PackageScoped[heldTerm]
 PackageScoped[translationContext]
@@ -80,6 +82,8 @@ statementTerm::usage = "statementTerm[context, label] gives the statement of the
 proofTerm::usage = "proofTerm[context, label] gives the proof term of the theorem label as an inactive term, or a Failure."
 proofTermWithVariants::usage = "proofTermWithVariants[context, label] gives {term, variants}: the proof term and the variants {assertion, renaming} it applies."
 variantLabel::usage = "variantLabel[label, renaming] gives the name of the variant of the assertion label with its setvar variables renamed, label{z:=y}."
+statementOf::usage = "statementOf[context, label] gives the statement of label: the database's, or that of a variant the translation made."
+withVariantStatement::usage = "withVariantStatement[context, label, entry] gives the context with the statement of a variant added."
 renameTree::usage = "renameTree[tree, renaming] gives the parse tree with its variables renamed."
 variantConstructorDefinition::usage = "variantConstructorDefinition[context, constructor, renaming] gives the definition record of the constructor with \
 its setvar parameters renamed, merged: its parameters, dependencies and right side, and the context with its defining axiom's variant."
@@ -146,7 +150,7 @@ binderTypecodeQ[context_, typecode_String] := MemberQ[context["Semantics"]["Bind
 
 disjointQ[pairs_List, a_String, b_String] := MemberQ[pairs, {a, b} | {b, a}]
 
-frameOf[context_Association, label_String] := With[{statement = context["Database"]["Statements"][label]},
+frameOf[context_Association, label_String] := With[{statement = statementOf[context, label]},
 	With[
 		{
 			setvars = Cases[statement["Floating"], {_, typecode_, variable_} /; binderTypecodeQ[context, typecode] :> variable],
@@ -194,7 +198,7 @@ translateTree[context_, dependencies_Association, variableNode[variable_String]]
 
 translateTree[context_, dependencies_Association, syntaxNode[label_String, arguments_List]] := Which[
 	KeyExistsQ[context["Semantics"]["Syntax"], label],
-		With[{named = AssociationThread[Map[Last, context["Database"]["Statements"][label]["Floating"]], arguments]},
+		With[{named = AssociationThread[Map[Last, statementOf[context, label]["Floating"]], arguments]},
 			context["Semantics"]["Syntax"][label][
 				Function[tree, translateTree[withScope[context, Cases[Values[named], variableNode[name_String] /; setvarNameQ[context, name] :> name]], dependencies, tree]],
 				named
@@ -282,10 +286,7 @@ variantConstructorDefinition[context_, constructor_String, renaming_Association]
 	With[
 		{
 			label = variantLabel[definition["Label"], renaming],
-			extended = Append[context, "Database" -> Append[context["Database"], "Statements" -> Append[
-				context["Database"]["Statements"],
-				variantLabel[definition["Label"], renaming] -> variantEntry[context, definition["Label"], renaming]
-			]]]
+			extended = withVariantStatement[context, variantLabel[definition["Label"], renaming], variantEntry[context, definition["Label"], renaming]]
 		},
 		With[
 			{
@@ -301,7 +302,7 @@ variantConstructorDefinition[context_, constructor_String, renaming_Association]
 							Complement[parameters, setvarParameters]
 						]]
 					},
-					With[{free = freeVariableSymbols[translateTree[Append[extended, "VariableTypecodes" -> variableTypecodesOf[extended["Database"], label]], dependencies, right]]},
+					With[{free = freeVariableSymbols[translateTree[Append[extended, "VariableTypecodes" -> variableTypecodesOf[extended, label]], dependencies, right]]},
 						<|
 							"Constructor" -> variantLabel[constructor, renaming],
 							"Label" -> label,
@@ -333,6 +334,12 @@ freeVariableSymbols[_] := {}
 (*Variants*)
 
 
+(* the statement of a label: the database's, or a variant's, kept apart so that adding one copies nothing *)
+statementOf[context_, label_String] := Lookup[Lookup[context, "VariantStatements", <||>], label, context["Database"]["Statements"][label]]
+
+withVariantStatement[context_, label_String, entry_Association] := Append[context, "VariantStatements" -> Append[Lookup[context, "VariantStatements", <||>], label -> entry]]
+
+
 (* An assertion applied with the same variable for two of its setvar variables, which it allows when they have no $d, is
    a different statement in higher-order abstract syntax: its variant, A{z:=y}, the assertion with z renamed y. The
    variant's trees are the assertion's renamed, its $d pairs renamed, so a wff variable depends on y when it may depend on
@@ -340,7 +347,7 @@ freeVariableSymbols[_] := {}
    variants in turn. *)
 variantLabel[label_String, renaming_Association] := label <> "{" <> StringRiffle[KeyValueMap[Function[{from, to}, from <> ":=" <> to], renaming], ","] <> "}"
 
-variantEntry[context_, label_String, renaming_Association] := With[{entry = context["Database"]["Statements"][label]},
+variantEntry[context_, label_String, renaming_Association] := With[{entry = statementOf[context, label]},
 	<|
 		"Kind" -> entry["Kind"],
 		"Label" -> variantLabel[label, renaming],
@@ -355,14 +362,14 @@ variantEntry[context_, label_String, renaming_Association] := With[{entry = cont
 renameTree[tree_, renaming_Association] := Replace[tree, variableNode[variable_String] :> variableNode[Lookup[renaming, variable, variable]], {0, Infinity}]
 
 (* the trees of an assertion and of its hypotheses, a variant's renamed from its assertion's *)
-assertionTree[context_, label_String] := With[{entry = context["Database"]["Statements"][label]},
+assertionTree[context_, label_String] := With[{entry = statementOf[context, label]},
 	If[ KeyExistsQ[entry, "Variant"],
 		renameTree[assertionTree[context, entry["Variant"]["Of"]], entry["Variant"]["Renaming"]],
 		confirmTree[statementTree[context["Database"], label]]
 	]
 ]
 
-hypothesisTree[context_, label_String, hypothesis_String] := With[{entry = context["Database"]["Statements"][label]},
+hypothesisTree[context_, label_String, hypothesis_String] := With[{entry = statementOf[context, label]},
 	If[ KeyExistsQ[entry, "Variant"],
 		renameTree[hypothesisTree[context, entry["Variant"]["Of"], hypothesis], entry["Variant"]["Renaming"]],
 		confirmTree[statementTree[context["Database"], label, hypothesis]]
@@ -391,7 +398,7 @@ statementTermOf[context_, label_String] := With[
 	},
 	With[
 		{
-			local = Append[context, "VariableTypecodes" -> variableTypecodesOf[database, label]],
+			local = Append[context, "VariableTypecodes" -> variableTypecodesOf[context, label]],
 			closed = Function[tree, termForAll[setvarBinders[context, frame["Setvars"]], tree]]
 		},
 		termForAll[
@@ -411,7 +418,7 @@ statementTermOf[context_, label_String] := With[
 confirmTree[failure_Failure] := Throw[failure, "translation"]
 confirmTree[tree_] := tree
 
-variableTypecodesOf[database_, label_String] := Association[Map[Function[floating, Last[floating] -> First[Rest[floating]]], database["Statements"][label]["Floating"]]]
+variableTypecodesOf[context_, label_String] := Association[Map[Function[floating, Last[floating] -> First[Rest[floating]]], statementOf[context, label]["Floating"]]]
 
 (* a proof term and the variants it asks for, {label, renaming} *)
 proofTermWithVariants[context_, label_String] := Replace[Reap[proofTerm[context, label], "variant"], {
@@ -457,7 +464,7 @@ constructorDefinition[context_, label_String, definition_Association] := With[
 			With[
 				{
 					free = freeVariableSymbols[translateTree[
-						Append[context, "VariableTypecodes" -> variableTypecodesOf[context["Database"], label]],
+						Append[context, "VariableTypecodes" -> variableTypecodesOf[context, label]],
 						dependencies,
 						definition["Right"]
 					]]
@@ -479,8 +486,8 @@ constructorDefinition[context_, label_String, definition_Association] := With[
 (* the value of the constructor: a function of its value and function parameters, the right side in their terms *)
 constructorValue[context_, label_String, constructor_Association, right_] := With[
 	{
-		local = Join[context, <|"VariableTypecodes" -> variableTypecodesOf[context["Database"], label], "Scope" -> constructor["ValueParameters"]|>],
-		typecodes = variableTypecodesOf[context["Database"], label]
+		local = Join[context, <|"VariableTypecodes" -> variableTypecodesOf[context, label], "Scope" -> constructor["ValueParameters"]|>],
+		typecodes = variableTypecodesOf[context, label]
 	},
 	termFunction[
 		Catenate[Map[
@@ -535,7 +542,7 @@ proofTermOf[context_, label_String] := Module[
 assertionBinders[context_, label_String] := With[
 	{
 		frame = frameOf[context, label],
-		local = Append[context, "VariableTypecodes" -> variableTypecodesOf[context["Database"], label]]
+		local = Append[context, "VariableTypecodes" -> variableTypecodesOf[context, label]]
 	},
 	Join[
 		Map[Function[other, termTyped[variableSymbol[First[other]], parameterType[context, Last[other], frame["Dependencies"][First[other]]]]], frame["Others"]],
@@ -558,7 +565,7 @@ definitionProofTerm[context_, label_String, definition_Association] := Catch[
 		assertionBinders[context, label],
 		termApply[
 			context["Semantics"]["Reflexivity"][definition["Head"]],
-			{translateTree[Append[context, "VariableTypecodes" -> variableTypecodesOf[context["Database"], label]], frameOf[context, label]["Dependencies"], definition["Left"]]}
+			{translateTree[Append[context, "VariableTypecodes" -> variableTypecodesOf[context, label]], frameOf[context, label]["Dependencies"], definition["Left"]]}
 		]
 	],
 	"translation"
@@ -576,7 +583,7 @@ stepTerm[context_, assertionStep[label_String, substitution_Association, hypothe
 		(
 			Sow[{label, renaming}, "variant"];
 			applicationTerm[
-				Append[context, "Database" -> Append[context["Database"], "Statements" -> Append[context["Database"]["Statements"], variantLabel[label, renaming] -> variantEntry[context, label, renaming]]]],
+				withVariantStatement[context, variantLabel[label, renaming], variantEntry[context, label, renaming]],
 				variantLabel[label, renaming],
 				substitution,
 				hypotheses
@@ -624,9 +631,9 @@ runProof[context_, label_String] := Module[
 		database = context["Database"],
 		statement, proof, stack = {}, saved = <||>, savedProofs = {}, setvars = {}, typecodes = <||>, result
 	},
-	statement = database["Statements"][label];
+	statement = statementOf[context, label];
 	proof = databaseProof[database, Lookup[Lookup[statement, "Variant", <||>], "Of", label]];
-	typecodes = variableTypecodesOf[database, label];
+	typecodes = variableTypecodesOf[context, label];
 	Scan[
 		Function[step,
 			Switch[step,
@@ -663,7 +670,7 @@ runProof[context_, label_String] := Module[
 ]
 
 (* the item a label pushes, with the number of items it pops *)
-proofItemOf[context_, theorem_String, statement_, step_String, stack_List] := With[{entry = context["Database"]["Statements"][step]},
+proofItemOf[context_, theorem_String, statement_, step_String, stack_List] := With[{entry = statementOf[context, step]},
 	Switch[entry["Kind"],
 		"Floating",
 			{0, syntaxItem[variableNode[Lookup[Lookup[Lookup[statement, "Variant", <||>], "Renaming", <||>], entry["Variable"], entry["Variable"]]], entry["Typecode"]]},
@@ -719,7 +726,7 @@ syntaxTreeOf[context_, entry_Association, substitution_Association] := If[entry[
 syntaxTheoremTree[context_, label_String] := Module[{stack = {}},
 	Scan[
 		Function[step,
-			With[{item = proofItemOf[context, label, context["Database"]["Statements"][label], step, stack]},
+			With[{item = proofItemOf[context, label, statementOf[context, label], step, stack]},
 				stack = Append[Drop[stack, -First[item]], Last[item]]
 			]
 		],
