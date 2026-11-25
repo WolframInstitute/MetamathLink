@@ -14,6 +14,17 @@ PacletObject[<|
 	"Dependencies" -> {"WolframInstitute/TypeTheory" -> "0.63.*"},
 	"Extensions" -> {
 		{"Kernel", "Root" -> "Kernel", "Context" -> {"WolframInstitute`MetamathLink`"}},
-		{"Test", "Root" -> "Tests", "Method" -> "Experimental-v1"}
+		{"Documentation", "Language" -> "English", "MainPage" -> "Guides/MetamathLink"},
+		{"Test", "Root" -> "Tests", "Method" -> "Experimental-v1"},
+		(* PacletBuild packs only the declared extensions: the databases the documentation and the tests read *)
+		{
+			"Asset",
+			"Root" -> "Data",
+			"Assets" -> {
+				{"demo0", "demo0.mm"},
+				{"setmm-propositional", "setmm-propositional.mm"},
+				{"setmm-2p2e4", "setmm-2p2e4.wxf"}
+			}
+		}
 	}
 |>]
