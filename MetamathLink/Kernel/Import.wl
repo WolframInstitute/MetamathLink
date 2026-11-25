@@ -29,6 +29,7 @@ PackageExported[MetamathToTypeTheory]
 
 PackageScoped[metamathDeclarations]
 PackageScoped[libraryCheck]
+PackageScoped[metamathCone]
 
 
 (* ::Section:: *)
@@ -39,10 +40,12 @@ MetamathToTypeTheory::usage = "MetamathToTypeTheory[File[path]] imports the Meta
 every proof checked again by TypeTheory's kernel.\nMetamathToTypeTheory[object] imports the MetamathObject that ResourceFunction[\"MetamathImport\"] gives.\n\
 MetamathToTypeTheory[File[\"database.wxf\"]] imports a database MetamathLink saved, with no network.\n\
 Options: \"Semantics\" -> \"Axiomatic\" or \"ZFC\" (Automatic: \"ZFC\" when the database has set.mm's setvar typecode); \"Through\" -> label, the last \
-statement to import (All: every one); \"UnprovedAxioms\" -> \"Fail\" or \"Assume\", whether an axiom the semantics does not prove stops the import or is \
+statement to import (All: every one); \"Cone\" -> label or {label, ...}, import only what these need; \"UnprovedAxioms\" -> \"Fail\" or \"Assume\", whether an axiom the semantics does not prove stops the import or is \
 declared as an axiom; Method -> \"Core\" or \"Surface\", whether declarations are given to TypeTheory's kernel as core terms, the \
 kernel's own form, or in surface syntax, elaborated first."
 metamathDeclarations::usage = "metamathDeclarations[context, label] gives the declarations the statement label adds and the context after it, or a Failure."
+metamathCone::usage = "metamathCone[database, labels] gives the statements the assertions labels need, in the order of the database: the assertions \
+their proofs apply, the syntax of every statement with its defining axiom, and the theorem axNAME that proves an axiom ax-NAME."
 libraryCheck::usage = "libraryCheck[declaration] in the declarations of a statement is a theorem that checks a constant of the environment against the \
 translation, added to a copy of the environment that is not kept."
 
@@ -51,7 +54,7 @@ translation, added to a copy of the environment that is not kept."
 (*Function Definitions*)
 
 
-Options[MetamathToTypeTheory] = {"Semantics" -> Automatic, "Through" -> All, "UnprovedAxioms" -> "Fail", Method -> "Core"}
+Options[MetamathToTypeTheory] = {"Semantics" -> Automatic, "Through" -> All, "Cone" -> None, "UnprovedAxioms" -> "Fail", Method -> "Core"}
 
 MetamathToTypeTheory[File[path_String], options : OptionsPattern[]] := MetamathToTypeTheory[metamathDatabase[File[path]], options]
 
@@ -60,7 +63,10 @@ MetamathToTypeTheory[object_?metamathObjectQ, options : OptionsPattern[]] := Met
 MetamathToTypeTheory[database_Association /; KeyExistsQ[database, "Grammar"], options : OptionsPattern[]] := With[
 	{
 		semantics = metamathSemantics[Replace[OptionValue["Semantics"], Automatic :> If[MemberQ[Values[database["Statements"]], KeyValuePattern["Typecode" -> "setvar"]], "ZFC", "Axiomatic"]]],
-		labels = Replace[OptionValue["Through"], {All :> database["Order"], last_String :> Take[database["Order"], UpTo[First[FirstPosition[database["Order"], last, {Length[database["Order"]]}]]]]}]
+		labels = Replace[OptionValue["Cone"], {
+			None :> Replace[OptionValue["Through"], {All :> database["Order"], last_String :> Take[database["Order"], UpTo[First[FirstPosition[database["Order"], last, {Length[database["Order"]]}]]]]}],
+			targets : (_String | {__String}) :> metamathCone[database, Flatten[{targets}]]
+		}]
 	},
 	Block[{$declarationMethod = OptionValue[Method], $declarationSemantics = semantics},
 		First[Fold[
@@ -338,3 +344,67 @@ surfaceDeclarationOf[head_, name_String, terms___] := Replace[FirstCase[{terms},
 
 $declarationMethod = "Surface"
 $declarationSemantics = <||>
+
+
+(* ::Subsection:: *)
+(*Cones*)
+
+
+(* the statements some assertions need, found from them: the assertions and syntax theorems each proof applies, the
+   syntax axioms in every statement and hypothesis with the axiom that defines each, and for an axiom ax-NAME the earlier
+   theorem axNAME of the same statement that proves it *)
+metamathCone[database_Association, targets_List] := With[{definitions = definingAxioms[database]},
+	Module[{needed = <||>, queue = targets, label},
+		While[queue =!= {},
+			label = First[queue];
+			queue = Rest[queue];
+			If[ ! KeyExistsQ[needed, label] && KeyExistsQ[database["Statements"], label],
+				needed[label] = True;
+				queue = Join[queue, Complement[requirementsOf[database, definitions, label], Keys[needed]]]
+			]
+		];
+		Select[database["Order"], Function[entry, KeyExistsQ[needed, entry]]]
+	]
+]
+
+requirementsOf[database_, definitions_Association, label_String] := With[{statement = database["Statements"][label]},
+	Switch[statement["Kind"],
+		"Theorem",
+			Join[
+				Select[DeleteDuplicates[Cases[databaseProof[database, label], _String]], Function[step, MatchQ[database["Statements"][step]["Kind"], "Axiom" | "Theorem"]]],
+				syntaxRequirements[database, definitions, label]
+			],
+		"Axiom",
+			Join[
+				syntaxRequirements[database, definitions, label],
+				If[ statement["Typecode"] === database["ProvableTypecode"],
+					Select[{StringReplace[label, StartOfString ~~ "ax-" -> "ax"]}, Function[candidate, candidate =!= label && KeyExistsQ[database["Statements"], candidate]]],
+					Lookup[definitions, label, {}]
+				]
+			],
+		_,
+			{}
+	]
+]
+
+(* the syntax labels of a provable statement and its hypotheses, and so their definitions *)
+syntaxRequirements[database_, definitions_, label_String] := If[database["Statements"][label]["Typecode"] =!= database["ProvableTypecode"],
+	{},
+	DeleteDuplicates[Cases[
+		Join[{statementTree[database, label]}, Map[Function[hypothesis, statementTree[database, label, hypothesis]], database["Statements"][label]["Essential"]]],
+		syntaxNode[syntax_String, _] :> syntax,
+		Infinity
+	]]
+]
+
+(* each syntax axiom's defining axioms: the axioms ( C <-> D ) or C = D whose left side is C applied to variables *)
+definingAxioms[database_Association] := GroupBy[
+	Cases[
+		Map[
+			Function[label, {label, statementTree[database, label]}],
+			Select[database["Order"], Function[label, database["Statements"][label]["Kind"] === "Axiom" && database["Statements"][label]["Typecode"] === database["ProvableTypecode"]]]
+		],
+		{label_, syntaxNode[_, {syntaxNode[constructor_String, {variableNode[_String] ...}], _}]} :> constructor -> label
+	],
+	First -> Last
+]
