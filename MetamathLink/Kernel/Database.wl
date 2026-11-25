@@ -70,11 +70,12 @@ metamathDatabase keeps it as database[\"Grammar\"]."
 
 metamathObjectQ[object_] := MatchQ[Head[object], _Symbol] && SymbolName[Head[object]] === "MetamathObject" && MatchQ[object, _[_Association]]
 
-metamathDatabase[File[path_String]] := metamathDatabase[ResourceFunction["MetamathImport"][File[path]]]
-
+(* the two rules for a file exclude each other, so that neither depends on the order a kernel tries them in *)
 metamathDatabase[File[path_String] /; StringEndsQ[path, ".wxf"]] := Replace[Import[path, "WXF"],
 	database_Association /; ! KeyExistsQ[database, "Identifier"] :> Append[database, "Identifier" -> CreateUUID["metamath-"]]
 ]
+
+metamathDatabase[File[path_String] /; ! StringEndsQ[path, ".wxf"]] := metamathDatabase[ResourceFunction["MetamathImport"][File[path]]]
 
 metamathDatabase[object_?metamathObjectQ] := With[
 	{

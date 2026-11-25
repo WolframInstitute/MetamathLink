@@ -383,15 +383,14 @@ $declarationSemantics = <||>
 
 (* the statements some assertions need, found from them: the assertions and syntax theorems each proof applies, the
    syntax axioms in every statement and hypothesis with the axiom that defines each, and for an axiom ax-NAME the earlier
-   theorem axNAME of the same statement that proves it *)
+   theorem axNAME of the same statement that proves it; a level at a time, each statement met once *)
 metamathCone[database_Association, targets_List] := With[{definitions = definingAxioms[database]},
-	Module[{needed = <||>, queue = targets, label},
-		While[queue =!= {},
-			label = First[queue];
-			queue = Rest[queue];
-			If[ ! KeyExistsQ[needed, label] && KeyExistsQ[database["Statements"], label],
-				needed[label] = True;
-				queue = Join[queue, Complement[requirementsOf[database, definitions, label], Keys[needed]]]
+	Module[{needed = <||>, frontier = Select[DeleteDuplicates[targets], Function[label, KeyExistsQ[database["Statements"], label]]]},
+		While[frontier =!= {},
+			Scan[Function[label, needed[label] = True], frontier];
+			frontier = Select[
+				DeleteDuplicates[Catenate[Map[Function[label, requirementsOf[database, definitions, label]], frontier]]],
+				Function[label, ! KeyExistsQ[needed, label] && KeyExistsQ[database["Statements"], label]]
 			]
 		];
 		Select[database["Order"], Function[entry, KeyExistsQ[needed, entry]]]
@@ -402,7 +401,7 @@ requirementsOf[database_, definitions_Association, label_String] := With[{statem
 	Switch[statement["Kind"],
 		"Theorem",
 			Join[
-				Select[DeleteDuplicates[Cases[databaseProof[database, label], _String]], Function[step, MatchQ[database["Statements"][step]["Kind"], "Axiom" | "Theorem"]]],
+				Select[proofLabels[statement], Function[step, MatchQ[Lookup[database["Statements"], step, <||>]["Kind"], "Axiom" | "Theorem"]]],
 				syntaxRequirements[database, definitions, label]
 			],
 		"Axiom",
@@ -417,6 +416,14 @@ requirementsOf[database_, definitions_Association, label_String] := With[{statem
 			{}
 	]
 ]
+
+(* the labels a proof refers to, without decoding it: a compressed proof lists them between its parentheses, its
+   mandatory hypotheses aside, which are no assertions *)
+proofLabels[statement_Association] := Replace[statement["Proof"], {
+	{"(", rest___String} :> Take[{rest}, LengthWhile[{rest}, Function[token, token =!= ")"]]],
+	proof : {___String} :> DeleteDuplicates[proof],
+	_ -> {}
+}]
 
 (* the syntax labels of a provable statement and its hypotheses, and so their definitions *)
 syntaxRequirements[database_, definitions_, label_String] := If[database["Statements"][label]["Typecode"] =!= database["ProvableTypecode"],
