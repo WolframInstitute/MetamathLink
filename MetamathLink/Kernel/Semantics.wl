@@ -159,6 +159,8 @@ $zfcAxiomVariants := <|
 		Typed["falseElimination"[n["equalitySymmetry"[e]]], ForAll[{Typed[x, "Set"]}, "setClass"[y] == "setClass"[x]]]
 	]],
 	"ax-13{z:=y}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[n, Not["setClass"[x] == "setClass"[y]]], Typed[e, "setClass"[y] == "setClass"[y]], Typed[w, "Set"]}, e]],
+	(* pairing with both members x, a singleton: no binder of ax-pr binds x or y, so the variant is an instance *)
+	"ax-pr{y:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[z, "Set"], Typed[w, "Set"]}, "ax-pr"[x, x, z, w]]],
 	(* x e. { x | ph } <-> [ x / x ] ph: the substitution's variant takes ph at x itself *)
 	"df-clab{y:=x}" -> HoldComplete[Function[{Typed[\[CurlyPhi], TypeSpecifier[{"Set"} -> TypeUniverse[0]]], Typed[x, "Set"]},
 		With[{membership = "classElementSetClass"[x, "classAbstraction"[Function[{Typed[v, "Set"]}, \[CurlyPhi][v]]]]},
