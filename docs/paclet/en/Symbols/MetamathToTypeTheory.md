@@ -103,7 +103,7 @@ Only what 2 + 2 = 4 needs, from the statements of set.mm saved with the paclet:
 arithmetic = MetamathToTypeTheory[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "setmm-2p2e4.wxf"}]], "Cone" -> "2p2e4"]
 ```
 
-<!-- => TypeTheoryEnvironment summary box: 3893 constants -->
+<!-- => TypeTheoryEnvironment summary box: 3801 constants -->
 
 ```wl
 TypeTheoryType[TypeTheoryTerm["2p2e4", arithmetic]]

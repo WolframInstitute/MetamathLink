@@ -30,6 +30,8 @@ PackageExported[MetamathToTypeTheory]
 PackageScoped[metamathDeclarations]
 PackageScoped[libraryCheck]
 PackageScoped[metamathCone]
+PackageScoped[databaseSemantics]
+PackageScoped[proofLabels]
 
 
 (* ::Section:: *)
@@ -45,8 +47,12 @@ declared as an axiom; Method -> \"Core\" or \"Surface\", whether declarations ar
 kernel's own form, or in surface syntax, elaborated first; \"BatchSize\" -> n, how many declarations TypeTheory's compiled kernel checks at once \
 (Automatic: 1000; 1 adds them one at a time)."
 metamathDeclarations::usage = "metamathDeclarations[context, label] gives the declarations the statement label adds and the context after it, or a Failure."
-metamathCone::usage = "metamathCone[database, labels] gives the statements the assertions labels need, in the order of the database: the assertions \
-their proofs apply, the syntax of every statement with its defining axiom, and the theorem axNAME that proves an axiom ax-NAME."
+metamathCone::usage = "metamathCone[database, semantics, labels] gives the statements the assertions labels need, in the order of the database: \
+the assertions their proofs apply, the syntax of every statement with the axiom that defines it in the semantics, and the earlier theorem axNAME \
+that proves an axiom ax-NAME."
+databaseSemantics::usage = "databaseSemantics[database, name] gives the semantics name, or for Automatic the ZFC semantics when the database has \
+set.mm's setvar typecode and the axiomatic one otherwise."
+proofLabels::usage = "proofLabels[statement] gives the labels the proof of the theorem statement refers to, without decoding it."
 libraryCheck::usage = "libraryCheck[declaration] in the declarations of a statement is a theorem that checks a constant of the environment against the \
 translation, added to a copy of the environment that is not kept."
 
@@ -62,23 +68,28 @@ MetamathToTypeTheory[File[path_String], options : OptionsPattern[]] := MetamathT
 MetamathToTypeTheory[object_?metamathObjectQ, options : OptionsPattern[]] := MetamathToTypeTheory[metamathDatabase[object], options]
 
 MetamathToTypeTheory[database_Association /; KeyExistsQ[database, "Grammar"], options : OptionsPattern[]] := With[
-	{
-		semantics = metamathSemantics[Replace[OptionValue["Semantics"], Automatic :> If[MemberQ[Values[database["Statements"]], KeyValuePattern["Typecode" -> "setvar"]], "ZFC", "Axiomatic"]]],
-		labels = Replace[OptionValue["Cone"], {
-			None :> Replace[OptionValue["Through"], {All :> database["Order"], last_String :> Take[database["Order"], UpTo[First[FirstPosition[database["Order"], last, {Length[database["Order"]]}]]]]}],
-			targets : (_String | {__String}) :> metamathCone[database, Flatten[{targets}]]
-		}]
-	},
-	Block[{$declarationMethod = OptionValue[Method], $batchSize = Replace[OptionValue["BatchSize"], Automatic -> 1000]},
-		Block[{$declarationSemantics = semantics},
-			First[flushed[Fold[
-				addStatement,
-				{semantics["Environment"], Append[translationContext[database, semantics], "UnprovedAxioms" -> OptionValue["UnprovedAxioms"]], {}},
-				labels
-			]]]
+	{semantics = databaseSemantics[database, OptionValue["Semantics"]]},
+	With[
+		{
+			labels = Replace[OptionValue["Cone"], {
+				None :> Replace[OptionValue["Through"], {All :> database["Order"], last_String :> Take[database["Order"], UpTo[First[FirstPosition[database["Order"], last, {Length[database["Order"]]}]]]]}],
+				targets : (_String | {__String}) :> metamathCone[database, semantics, Flatten[{targets}]]
+			}]
+		},
+		Block[{$declarationMethod = OptionValue[Method], $batchSize = Replace[OptionValue["BatchSize"], Automatic -> 1000]},
+			Block[{$declarationSemantics = semantics},
+				First[flushed[Fold[
+					addStatement,
+					{semantics["Environment"], Append[translationContext[database, semantics], "UnprovedAxioms" -> OptionValue["UnprovedAxioms"]], {}},
+					labels
+				]]]
+			]
 		]
 	]
 ]
+
+databaseSemantics[database_Association, Automatic] := metamathSemantics[If[MemberQ[Values[database["Statements"]], KeyValuePattern["Typecode" -> "setvar"]], "ZFC", "Axiomatic"]]
+databaseSemantics[_Association, name_String] := metamathSemantics[name]
 
 (* The state of an import: the environment, the context of the translation, and the declarations translated but not yet
    added, each with its label. They are added in batches, checked by TypeTheory's compiled kernel where it has one,
@@ -228,16 +239,17 @@ axiomDeclarations[context_, statement_Association] := With[{label = statement["L
 
 (* set.mm states the axioms of the complex numbers, and ax-inf2, after proving each from the others as a theorem axNAME:
    ax-NAME is proved by axNAME when that theorem comes earlier with the same statement and hypotheses *)
-justificationOf[context_, statement_Association] := With[
-	{
-		candidate = StringReplace[statement["Label"], StartOfString ~~ "ax-" -> "ax"],
-		statements = context["Database"]["Statements"]
-	},
+justificationOf[context_, statement_Association] := Replace[justifyingTheorem[context["Database"]["Statements"], statement], {
+	candidate_String /; KeyExistsQ[Lookup[context, "Imported", <||>], candidate] :> candidate,
+	_ -> None
+}]
+
+(* the theorem axNAME of the same statement and hypotheses as the axiom ax-NAME, wherever it is in the database, or None *)
+justifyingTheorem[statements_Association, statement_Association] := With[{candidate = StringReplace[statement["Label"], StartOfString ~~ "ax-" -> "ax"]},
 	If[ And[
 			candidate =!= statement["Label"],
 			KeyExistsQ[statements, candidate],
 			statements[candidate]["Kind"] === "Theorem",
-			KeyExistsQ[Lookup[context, "Imported", <||>], candidate],
 			statements[candidate]["Symbols"] === statement["Symbols"],
 			statements[candidate]["Floating"] === statement["Floating"],
 			Map[Function[hypothesis, statements[hypothesis]["Symbols"]], statements[candidate]["Essential"]] ===
@@ -384,12 +396,13 @@ $declarationSemantics = <||>
 (* the statements some assertions need, found from them: the assertions and syntax theorems each proof applies, the
    syntax axioms in every statement and hypothesis with the axiom that defines each, and for an axiom ax-NAME the earlier
    theorem axNAME of the same statement that proves it; a level at a time, each statement met once *)
-metamathCone[database_Association, targets_List] := With[{definitions = definingAxioms[database]},
+metamathCone[database_Association, semantics_Association, targets_List] := With[
+	{definitions = definingAxioms[database, semantics], positions = AssociationThread[database["Order"], Range[Length[database["Order"]]]]},
 	Module[{needed = <||>, frontier = Select[DeleteDuplicates[targets], Function[label, KeyExistsQ[database["Statements"], label]]]},
 		While[frontier =!= {},
 			Scan[Function[label, needed[label] = True], frontier];
 			frontier = Select[
-				DeleteDuplicates[Catenate[Map[Function[label, requirementsOf[database, definitions, label]], frontier]]],
+				DeleteDuplicates[Catenate[Map[Function[label, requirementsOf[database, definitions, positions, label]], frontier]]],
 				Function[label, ! KeyExistsQ[needed, label] && KeyExistsQ[database["Statements"], label]]
 			]
 		];
@@ -397,7 +410,7 @@ metamathCone[database_Association, targets_List] := With[{definitions = defining
 	]
 ]
 
-requirementsOf[database_, definitions_Association, label_String] := With[{statement = database["Statements"][label]},
+requirementsOf[database_, definitions_Association, positions_Association, label_String] := With[{statement = database["Statements"][label]},
 	Switch[statement["Kind"],
 		"Theorem",
 			Join[
@@ -408,7 +421,8 @@ requirementsOf[database_, definitions_Association, label_String] := With[{statem
 			Join[
 				syntaxRequirements[database, definitions, label],
 				If[ statement["Typecode"] === database["ProvableTypecode"],
-					Select[{StringReplace[label, StartOfString ~~ "ax-" -> "ax"]}, Function[candidate, candidate =!= label && KeyExistsQ[database["Statements"], candidate]]],
+					(* the theorem that proves the axiom, when it comes before it, as justificationOf asks *)
+					Replace[justifyingTheorem[database["Statements"], statement], {candidate_String /; positions[candidate] < positions[label] :> {candidate}, _ -> {}}],
 					Lookup[definitions, label, {}]
 				]
 			],
@@ -435,14 +449,17 @@ syntaxRequirements[database_, definitions_, label_String] := If[database["Statem
 	]]
 ]
 
-(* each syntax axiom's defining axioms: the axioms ( C <-> D ) or C = D whose left side is C applied to variables *)
-definingAxioms[database_Association] := GroupBy[
-	Cases[
-		Map[
-			Function[label, {label, statementTree[database, label]}],
-			Select[database["Order"], Function[label, database["Statements"][label]["Kind"] === "Axiom" && database["Statements"][label]["Typecode"] === database["ProvableTypecode"]]]
-		],
-		{label_, syntaxNode[_, {syntaxNode[constructor_String, {variableNode[_String] ...}], _}]} :> constructor -> label
+(* the axiom that defines each syntax axiom, as the translation reads it (definitionOf): the first axiom ( C <-> D ) or
+   C = D, in the heads of the semantics, whose left side is C applied to distinct variables, C not primitive syntax of
+   the semantics. An axiom of that form after it, as set.mm's ax-frege58a for /\, is no definition. *)
+definingAxioms[database_Association, semantics_Association] := Association[Reverse[Cases[
+	Map[
+		Function[label, {label, statementTree[database, label]}],
+		Select[database["Order"], Function[label, database["Statements"][label]["Kind"] === "Axiom" && database["Statements"][label]["Typecode"] === database["ProvableTypecode"]]]
 	],
-	First -> Last
-]
+	{label_, syntaxNode[head_, {syntaxNode[constructor_String, arguments : {variableNode[_String] ...}], _}]} /; And[
+		MemberQ[semantics["DefinitionHeads"], head],
+		! KeyExistsQ[semantics["Syntax"], constructor],
+		DuplicateFreeQ[arguments]
+	] :> constructor -> {label}
+]]]

@@ -81,13 +81,13 @@ TypeTheoryAxiomClosure[TypeTheoryTerm["pm2.18", propositional]]
 
 set.mm's variables x, y, z range over sets, and a formula variable φ may mention any of them unless a distinct-variable condition, `$d x φ`, says it does not. In type theory a setvar is a bound variable of type `"Set"`, and φ is a function of the setvar variables it may mention: ax-gen, from φ infer ∀x φ, becomes a statement about every predicate φ of one set.
 
-This part imports what 2 + 2 = 4 needs, from the statements of set.mm saved with the paclet: 3496 of them, and it takes a few minutes.
+This part imports what 2 + 2 = 4 needs, from the statements of set.mm saved with the paclet: 3403 of them, and it takes under a minute.
 
 ```wl
 arithmetic = MetamathToTypeTheory[File[FileNameJoin[{data, "setmm-2p2e4.wxf"}]], "Cone" -> "2p2e4"]
 ```
 
-<!-- => TypeTheoryEnvironment summary box: 3893 constants -->
+<!-- => TypeTheoryEnvironment summary box: 3801 constants -->
 
 The generalization rule; its conclusion is closed over x like every statement, by a binder its body does not use, which
 shows as an arrow from `"Set"`:
