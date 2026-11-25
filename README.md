@@ -63,6 +63,16 @@ Declarations reach TypeTheory's kernel as core terms, its own locally nameless f
 
 A database can be saved as WXF and imported with no network, `MetamathToTypeTheory[File["set.wxf"]]`.
 
+## set.mm through 2p2e4
+
+```bash
+TYPETHEORY_PACLET=/path/to/TypeTheory/TypeTheory wolframscript -f scripts/import_setmm.wls set.mm 2p2e4 --out 2p2e4.tte
+```
+
+imports the cone of `2p2e4`, 3496 statements of set.mm down to the construction of the complex numbers, in about three
+minutes and 0.5 GB: 3893 constants, no axiom beyond the prelude's, `2p2e4`'s closure the prelude's propositional
+extensionality, choice and quotient soundness, and `TypeTheoryCheck` checks every constant again (50 s).
+
 ## Tests
 
 ```bash
