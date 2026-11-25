@@ -21,8 +21,9 @@ SetDirectory[repositoryRoot]
 
 PacletDirectoryLoad[pacletDirectory]
 
-(* TypeTheory from the directory TYPETHEORY_PACLET names, a checkout's TypeTheory directory, or as installed *)
-If[ StringQ[Environment["TYPETHEORY_PACLET"]], PacletDirectoryLoad[Environment["TYPETHEORY_PACLET"]]]
+(* TypeTheory from the directory TYPETHEORY_PACLET names, a checkout's TypeTheory directory, or as installed: its
+   umbrella file is read itself, since a newer TypeTheory installed would win over a directory of an older version *)
+If[ StringQ[Environment["TYPETHEORY_PACLET"]], Get[FileNameJoin[{Environment["TYPETHEORY_PACLET"], "Kernel", "TypeTheory.wl"}]]]
 
 (* a file given relative to the repository root is made absolute, so that its line names it under the tests *)
 testFiles = If[ Length[$ScriptCommandLine] > 1,

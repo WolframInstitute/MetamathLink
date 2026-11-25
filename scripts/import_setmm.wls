@@ -16,7 +16,9 @@ repositoryRoot = ParentDirectory[DirectoryName[$InputFileName]]
 
 PacletDirectoryLoad[FileNameJoin[{repositoryRoot, "MetamathLink"}]]
 
-If[ StringQ[Environment["TYPETHEORY_PACLET"]], PacletDirectoryLoad[Environment["TYPETHEORY_PACLET"]]]
+(* TypeTheory from the directory TYPETHEORY_PACLET names, a checkout's TypeTheory directory, or as installed: its
+   umbrella file is read itself, since a newer TypeTheory installed would win over a directory of an older version *)
+If[ StringQ[Environment["TYPETHEORY_PACLET"]], Get[FileNameJoin[{Environment["TYPETHEORY_PACLET"], "Kernel", "TypeTheory.wl"}]]]
 
 Needs["WolframInstitute`TypeTheory`"]
 Needs["WolframInstitute`MetamathLink`"]
