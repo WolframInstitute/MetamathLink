@@ -39,13 +39,19 @@ RelatedTutorials: [MetamathInTypeTheory]
 
 ## Basic Examples
 
+MetamathToTypeTheory gives environments of TypeTheory, whose functions take them:
+
+```wl
+Needs["WolframInstitute`TypeTheory`"]
+```
+
 demo0, the example database of the Metamath book, in the axiomatic semantics:
 
 ```wl
 demo = MetamathToTypeTheory[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "demo0.mm"}]]]
 ```
 
-<!-- => TypeTheoryEnvironment summary box -->
+<!-- => TypeTheoryEnvironment summary box: 284 constants -->
 
 The statement of th1, t = t for every term t:
 
@@ -61,7 +67,7 @@ It rests on demo0's own axioms:
 TypeTheoryAxiomClosure[TypeTheoryTerm["th1", demo]]
 ```
 
-<!-- => closure -->
+<!-- => <|"term" -> "Signature", "weq" -> "Signature", "mp" -> "Proposition", "tpl" -> "Signature", "tze" -> "Signature", "a2" -> "Proposition", "wim" -> "Signature", "a1" -> "Proposition"|> -->
 
 ## Scope
 
@@ -71,7 +77,7 @@ set.mm's propositional calculus through a label, in the ZFC semantics:
 propositional = MetamathToTypeTheory[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "setmm-propositional.mm"}]], "Through" -> "pm2.43"]
 ```
 
-<!-- => TypeTheoryEnvironment summary box -->
+<!-- => TypeTheoryEnvironment summary box: 426 constants -->
 
 set.mm's wff variables are propositions:
 
@@ -97,7 +103,7 @@ Only what 2 + 2 = 4 needs, from the statements of set.mm saved with the paclet:
 arithmetic = MetamathToTypeTheory[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "setmm-2p2e4.wxf"}]], "Cone" -> "2p2e4"]
 ```
 
-<!-- => TypeTheoryEnvironment summary box -->
+<!-- => TypeTheoryEnvironment summary box: 3893 constants -->
 
 ```wl
 TypeTheoryType[TypeTheoryTerm["2p2e4", arithmetic]]
@@ -111,7 +117,7 @@ It rests on the prelude's three axioms:
 TypeTheoryAxiomClosure[TypeTheoryTerm["2p2e4", arithmetic]]
 ```
 
-<!-- => <|propositionalExtensionality, choice, quotientSoundness|> -->
+<!-- => <|"propositionalExtensionality" -> "Proposition", "choice" -> "Signature", "quotientSoundness" -> "Proposition"|> -->
 
 ## Possible Issues
 

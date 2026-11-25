@@ -11,9 +11,11 @@ RelatedGuides: [MetamathLink]
 
 A Metamath database is a list of statements: constants and variables, the syntax that builds formulas, axioms, and theorems whose proofs apply earlier statements by substitution. Its checker knows nothing of logic; the axioms carry it all. [MetamathToTypeTheory]() reads a database as statements of type theory instead, so that TypeTheory's kernel, which knows what a proposition and a proof are, checks every proof again. This tutorial imports demo0, the first example of the Metamath book, then the propositional calculus of set.mm, Metamath's database of ZFC, and then what set.mm's proof of 2 + 2 = 4 needs, all of it, down to its construction of the complex numbers.
 
-The databases this tutorial reads are saved with the paclet:
+MetamathToTypeTheory gives environments of TypeTheory, whose functions take them, and the databases this tutorial reads
+are saved with the paclet:
 
 ```wl
+Needs["WolframInstitute`TypeTheory`"]
 data = FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data"}];
 ```
 
@@ -25,7 +27,7 @@ demo0 declares terms and formulas of its own, two axioms about equality and addi
 demo = MetamathToTypeTheory[File[FileNameJoin[{data, "demo0.mm"}]]]
 ```
 
-<!-- => TypeTheoryEnvironment summary box -->
+<!-- => TypeTheoryEnvironment summary box: 284 constants -->
 
 In the axiomatic semantics its typecode `term` is a type of its own, its syntax `t = r` a constant `weq` and its formulas propositions. The theorem th1 says that every term equals itself:
 
@@ -41,7 +43,7 @@ Its proof is checked by TypeTheory's kernel from demo0's axioms, and from nothin
 TypeTheoryAxiomClosure[TypeTheoryTerm["th1", demo]]
 ```
 
-<!-- => closure -->
+<!-- => <|"term" -> "Signature", "weq" -> "Signature", "mp" -> "Proposition", "tpl" -> "Signature", "tze" -> "Signature", "a2" -> "Proposition", "wim" -> "Signature", "a1" -> "Proposition"|> -->
 
 ## The Propositional Calculus of set.mm
 
@@ -51,7 +53,7 @@ set.mm's propositional calculus goes into the ZFC semantics, where its connectiv
 propositional = MetamathToTypeTheory[File[FileNameJoin[{data, "setmm-propositional.mm"}]], "Through" -> "pm2.18"]
 ```
 
-<!-- => TypeTheoryEnvironment summary box -->
+<!-- => TypeTheoryEnvironment summary box: 498 constants -->
 
 set.mm's axioms are theorems of the environment it extends. `ax-1`, `ax-2` and `ax-mp` are intuitionistic, so a theorem that uses only them rests on no axiom:
 
@@ -73,7 +75,7 @@ TypeTheoryType[TypeTheoryTerm["pm2.18", propositional]]
 TypeTheoryAxiomClosure[TypeTheoryTerm["pm2.18", propositional]]
 ```
 
-<!-- => propext, choice, quotientSoundness -->
+<!-- => <|"choice" -> "Signature", "quotientSoundness" -> "Proposition", "propositionalExtensionality" -> "Proposition"|> -->
 
 ## Quantifiers and Variables
 
@@ -85,15 +87,16 @@ This part imports what 2 + 2 = 4 needs, from the statements of set.mm saved with
 arithmetic = MetamathToTypeTheory[File[FileNameJoin[{data, "setmm-2p2e4.wxf"}]], "Cone" -> "2p2e4"]
 ```
 
-<!-- => TypeTheoryEnvironment summary box -->
+<!-- => TypeTheoryEnvironment summary box: 3893 constants -->
 
-The generalization rule:
+The generalization rule; its conclusion is closed over x like every statement, by a binder its body does not use, which
+shows as an arrow from `"Set"`:
 
 ```wl
 TypeTheoryType[TypeTheoryTerm["ax-gen", arithmetic]]
 ```
 
-<!-- => ∀_{φ∶Set → Prop} (∀_{x∶Set} φ[x]) ⇒ ∀_{x∶Set} ∀_{x∶Set} φ[x] -->
+<!-- => ∀_{φ∶Set → Prop} (∀_{x∶Set} φ[x]) ⇒ Set → ∀_{x∶Set} φ[x] -->
 
 In set.mm `x = y` is equality of the classes of x and y, and `x e. y` membership of classes: ax-7 is the transitivity of equality.
 
@@ -101,15 +104,15 @@ In set.mm `x = y` is equality of the classes of x and y, and `x e. y` membership
 TypeTheoryType[TypeTheoryTerm["ax-7", arithmetic]]
 ```
 
-<!-- => ax-7 -->
+<!-- => ∀_{x∶Set} ∀_{y∶Set} ∀_{z∶Set} setClass[x] == setClass[y] ⇒ setClass[x] == setClass[z] ⇒ setClass[y] == setClass[z] -->
 
 Where no `$d` keeps two setvar variables apart, set.mm may apply an assertion with the same variable for both. In type theory that instance is another statement, a variant, which MetamathLink proves from the assertion's own proof with the variables merged. equid, x = x, applies ax7v1 so:
 
 ```wl
-Select[Keys[Information[arithmetic, "Constants"]], StringQ[#] && StringContainsQ[#, "{"] &]
+Select[Information[arithmetic, "Constants"], StringQ[#] && StringMatchQ[#, __ ~~ "{" ~~ __ ~~ ":=" ~~ __ ~~ "}"] &]
 ```
 
-<!-- => variants -->
+<!-- => {"ax-7{z:=y}", "ax7v{z:=y}", "ax7v1{z:=y}", "ax-7{z:=x}", ..., "wsb{t:=x}", ..., "df-clab{y:=x}", ...}: about 70 -->
 
 ## 2 + 2 = 4
 
@@ -127,7 +130,7 @@ set.mm states the axioms of the complex numbers as axioms after proving each fro
 TypeTheoryAxiomClosure[TypeTheoryTerm["2p2e4", arithmetic]]
 ```
 
-<!-- => propext, choice, quotientSoundness -->
+<!-- => <|"propositionalExtensionality" -> "Proposition", "choice" -> "Signature", "quotientSoundness" -> "Proposition"|> -->
 
 The environment can be saved in TypeTheory's Format 3, which reads its declarations lazily when it is opened:
 
@@ -135,4 +138,4 @@ The environment can be saved in TypeTheory's Format 3, which reads its declarati
 Export[FileNameJoin[{$TemporaryDirectory, "2p2e4.tte"}], arithmetic]
 ```
 
-<!-- => File[...] -->
+<!-- => File[".../2p2e4.tte"] -->

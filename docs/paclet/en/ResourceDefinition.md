@@ -30,13 +30,19 @@ Links: ["[MetamathLink on GitHub](https://github.com/WolframInstitute/MetamathLi
 
 ## Basic Examples
 
+MetamathToTypeTheory gives environments of TypeTheory, whose functions take them:
+
+```wl
+Needs["WolframInstitute`TypeTheory`"]
+```
+
 demo0, the example of the Metamath book, in the axiomatic semantics:
 
 ```wl
 demo = MetamathToTypeTheory[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "demo0.mm"}]]]
 ```
 
-<!-- => TypeTheoryEnvironment summary box -->
+<!-- => TypeTheoryEnvironment summary box: 284 constants -->
 
 Its theorem th1, t = t for every term t:
 

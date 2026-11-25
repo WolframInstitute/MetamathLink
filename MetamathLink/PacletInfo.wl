@@ -11,7 +11,7 @@ PacletObject[<|
 	"Keywords" -> {"Metamath", "set.mm", "type theory", "ZFC", "proof translation"},
 	"Categories" -> {"Mathematics"},
 	"PrimaryContext" -> "WolframInstitute`MetamathLink`",
-	"Dependencies" -> {"WolframInstitute/TypeTheory" -> "0.62.*"},
+	"Dependencies" -> {"WolframInstitute/TypeTheory" -> "0.63.*"},
 	"Extensions" -> {
 		{"Kernel", "Root" -> "Kernel", "Context" -> {"WolframInstitute`MetamathLink`"}},
 		{"Test", "Root" -> "Tests", "Method" -> "Experimental-v1"}

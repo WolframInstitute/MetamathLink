@@ -17,3 +17,7 @@ PackageInitialize["WolframInstitute`MetamathLink`",
 		"IgnoreFiles" -> {}
 	|>
 ]
+
+(* TypeTheory goes on $ContextPath, as LeanLink's bridge puts it there: MetamathToTypeTheory gives TypeTheory's
+   environments, which TypeTheory's functions take *)
+Needs["WolframInstitute`TypeTheory`"]
