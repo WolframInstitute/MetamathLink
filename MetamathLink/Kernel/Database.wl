@@ -1,8 +1,8 @@
 (* ::Package:: *)
 
 (*
-A Metamath database as MetamathLink reads it: the statements of a MetamathObject, the value of
-ResourceFunction["MetamathImport"], each as an association, in the order of the file.
+A Metamath database as MetamathLink reads it: the statements of the file read by MetamathLink's library (Library.wl),
+or of a MetamathObject, the value of ResourceFunction["MetamathImport"], each as an association, in the order of the file.
 
 	<|"Kind" -> "Axiom" | "Theorem", "Label" -> label, "Typecode" -> typecode, "Symbols" -> {symbol, ...},
 	  "Disjoint" -> {{variable, variable}, ...}, "Floating" -> {{label, typecode, variable}, ...},
@@ -16,8 +16,11 @@ of labels with markStep[k] and recallStep[k], the compressed proof's saving and 
 
 The grammar is the syntax axioms, the axioms whose typecode is not the provable one: a statement is parsed as a tree
 of syntaxNode[label, {argument, ...}], the arguments in the order of the axiom's floating hypotheses, with
-variableNode[variable] at the leaves. The parser is a memoized recursive descent that keeps every parse of every
-typecode at every position, so the grammar may be ambiguous locally; a statement must have exactly one parse.
+variableNode[variable] at the leaves. The library's grammar, metamath-rs's, parses the statements of a database it reads,
+database["Trees"]; a statement it does not parse, as in a database whose grammar is ambiguous where its parser looks ahead,
+and every statement of a database MetamathImport read, are parsed here. This parser is a memoized recursive descent that
+keeps every parse of every typecode at every position, so the grammar may be ambiguous locally; a statement must have
+exactly one parse.
 *)
 
 
@@ -48,7 +51,8 @@ PackageScoped[grammarOf]
 
 
 metamathDatabase::usage = "metamathDatabase[object] gives the database of the MetamathObject object, an association of the statements by label, \
-their order and its grammar.\nmetamathDatabase[File[path]] reads the file with ResourceFunction[\"MetamathImport\"] first, or a database saved as a .wxf file."
+their order and its grammar.\nmetamathDatabase[File[path]] reads the file with MetamathLink's library, which verifies it and parses its statements, or \
+with ResourceFunction[\"MetamathImport\"] where there is no library; or a database saved as a .wxf file."
 metamathObjectQ::usage = "metamathObjectQ[expr] gives True when expr is a MetamathObject, the value of ResourceFunction[\"MetamathImport\"]."
 databaseStatement::usage = "databaseStatement[database, label] gives the statement of label, an association, or a Failure if the database has none."
 databaseProof::usage = "databaseProof[database, label] gives the proof of the theorem label as a list of labels, markStep[k] and recallStep[k], decoding a \
@@ -75,7 +79,12 @@ metamathDatabase[File[path_String] /; StringEndsQ[path, ".wxf"]] := Replace[Impo
 	database_Association /; ! KeyExistsQ[database, "Identifier"] :> Append[database, "Identifier" -> CreateUUID["metamath-"]]
 ]
 
-metamathDatabase[File[path_String] /; ! StringEndsQ[path, ".wxf"]] := metamathDatabase[ResourceFunction["MetamathImport"][File[path]]]
+(* a .mm file is read by MetamathLink's library, verified, with the trees of the statements its grammar parses; where
+   there is no library for the platform, by ResourceFunction["MetamathImport"] *)
+metamathDatabase[File[path_String] /; ! StringEndsQ[path, ".wxf"]] := Replace[libraryDatabase[path], {
+	database_Association :> Join[database, <|"Grammar" -> grammarOf[database], "Identifier" -> CreateUUID["metamath-"]|>],
+	Failure["NoLibrary", _] :> metamathDatabase[ResourceFunction["MetamathImport"][File[path]]]
+}]
 
 metamathDatabase[object_?metamathObjectQ] := With[
 	{
@@ -185,14 +194,15 @@ grammarOf[database_Association] := Map[
    puts the whole database into its body, which Enclose would walk at every call. *)
 (* memoized as down values, a hash table that takes a new tree in constant time: an association assigned inside a Lookup of
    it is copied at every new key *)
+(* the tree MetamathLink's library parsed, if it did *)
 statementTree[database_Association, label_String] := Replace[
 	cachedTree[database["Identifier"], label],
-	_cachedTree :> (cachedTree[database["Identifier"], label] = parsedStatementTree[database, label])
+	_cachedTree :> (cachedTree[database["Identifier"], label] = Lookup[Lookup[database, "Trees", <||>], label, parsedStatementTree[database, label]])
 ]
 
 statementTree[database_Association, assertion_String, label_String] := Replace[
 	cachedTree[database["Identifier"], {assertion, label}],
-	_cachedTree :> (cachedTree[database["Identifier"], {assertion, label}] = parsedStatementTree[database, assertion, label])
+	_cachedTree :> (cachedTree[database["Identifier"], {assertion, label}] = Lookup[Lookup[database, "Trees", <||>], label, parsedStatementTree[database, assertion, label]])
 ]
 
 parsedStatementTree[database_Association, label_String] := Replace[

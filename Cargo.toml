@@ -1,0 +1,7 @@
+[workspace]
+members = ["MetamathLink/Libs/metamath_link"]
+resolver = "2"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"

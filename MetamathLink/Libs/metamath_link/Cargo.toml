@@ -1,0 +1,26 @@
+[package]
+name = "metamath_link"
+version = "0.1.0"
+edition = "2024"
+description = "MetamathLink's core: Metamath databases read and checked by metamath-rs, given to the Wolfram Language"
+license = "MIT"
+publish = false
+
+# `cargo wl build` (cargo-wl, WolframResearch/wolfram-rust-library) compiles the cdylib, reads the manifest that
+# #[export] embeds in it, and writes the library with a generated Functions.wl loader into
+# MetamathLink/Binaries/metamath_link-<SystemID>/, which Kernel/Library.wl gets.
+[package.metadata.wl.pacletinfo]
+name = "metamath_link"
+output = "../../Binaries"
+named-exports = true
+
+[dependencies]
+# metamath-knife's library, the fastest Metamath verifier, at the commit its binary was benchmarked at
+metamath-rs = { git = "https://github.com/metamath/metamath-knife", rev = "76fc9f7f39f46f4c43499a0c2bd1402eb8b1cf9a", default-features = false }
+annotate-snippets = "0.11"
+# master of wolfram-rust-library, for #[wolfram(symbol = ...)] and transparent enums, which 0.6.0 does not have
+wolfram-export = { git = "https://github.com/WolframResearch/wolfram-rust-library", rev = "dfc870fb77789f0dc030bfec2cd746556623371a", features = ["wxf"] }
+wolfram-serialize = { git = "https://github.com/WolframResearch/wolfram-rust-library", rev = "dfc870fb77789f0dc030bfec2cd746556623371a" }
+
+[lib]
+crate-type = ["cdylib", "lib"]

@@ -17,6 +17,8 @@ PacletObject[<|
 		{"Documentation", "Language" -> "English", "MainPage" -> "Guides/MetamathLink"},
 		{"Test", "Root" -> "Tests", "Method" -> "Experimental-v1"},
 		(* PacletBuild packs only the declared extensions: the databases the documentation and the tests read *)
+		(* the library for each platform, which scripts/build_library.sh writes *)
+		{"Asset", "Assets" -> {{"Binaries", "Binaries"}}},
 		{
 			"Asset",
 			"Root" -> "Data",

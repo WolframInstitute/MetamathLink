@@ -54,7 +54,8 @@ Declarations reach TypeTheory's kernel as core terms, its own locally nameless f
 
 | file | |
 |---|---|
-| `Kernel/Database.wl` | the statements of a MetamathObject, the grammar of the syntax axioms and the parser, compressed proofs |
+| `Kernel/Library.wl` | MetamathLink's library, the Rust crate in `Libs/metamath_link` |
+| `Kernel/Database.wl` | the statements of a database, the grammar of the syntax axioms and the parser, compressed proofs |
 | `Kernel/Translation.wl` | frames, statements and proof terms, definitions, variants |
 | `Kernel/Semantics.wl` | the Axiomatic and ZFC semantics |
 | `Kernel/SetmmLibrary.wl` | set.mm's axioms as theorems over the ZFC environment, with no axiom of their own |
@@ -62,6 +63,22 @@ Declarations reach TypeTheory's kernel as core terms, its own locally nameless f
 | `Kernel/Import.wl` | `MetamathToTypeTheory` |
 
 A database can be saved as WXF and imported with no network, `MetamathToTypeTheory[File["set.wxf"]]`.
+
+## The library
+
+`MetamathLink/Libs/metamath_link` is a Rust crate on [metamath-rs](https://github.com/metamath/metamath-knife), the
+library of metamath-knife: it reads a `.mm` file, verifies every proof and parses every statement with the grammar of
+the database's syntax axioms, and gives the kernel the database as typed WXF through
+[wolfram-export](https://github.com/WolframResearch/wolfram-rust-library). All of set.mm, 121,324 statements, is read,
+verified and parsed in 2 s. A statement its grammar does not parse, as in demo0, whose grammar is ambiguous where the
+parser looks ahead, is parsed by MetamathLink's own parser; without a library for the platform, a `.mm` file is read by
+`ResourceFunction["MetamathImport"]`.
+
+```bash
+sh scripts/build_library.sh      # cargo test, then cargo wl build: MetamathLink/Binaries/metamath_link-<SystemID>/
+```
+
+It needs Rust and `cargo-wl` (`cargo install cargo-wl`), which writes the library's loader, `Functions.wl`.
 
 ## set.mm through 2p2e4
 
