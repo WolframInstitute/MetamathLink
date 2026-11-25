@@ -14,15 +14,15 @@ the parameters in the order of the frame's floating hypotheses, each hypothesis 
 variables of the frame. An occurrence of φ is φ[x, ...], applied to the variables it depends on as the binders in scope
 bind them; every variable keeps one symbol, so an inner binder shadows an outer one as in Metamath.
 
-A proof step proves its statement closed over every setvar variable of the proof, the frame's and the dummy ones: an
-assertion A applied with the substitution σ is
+A proof step is a term in the setvar variables of the proof, the frame's and the dummy ones: an assertion A applied with
+the substitution σ is
 
-	Function[{V}, A[φ -> Function[{σ(deps of φ)}, σ(φ)], ..., Function[{σ(W)}, q[V]], ..., σ(W)]]
+	A[Function[{σ(deps of φ)}, σ(φ)], ..., Function[{σ(W)}, q], ..., σ(W)]
 
-with W the setvar variables of A and q the proofs of its hypotheses: each hypothesis of A must hold for every value of
-its setvar variables, which the step gives by binding the symbols of their images again. A step saved by the compressed
-proof is let-bound and used by name. The proof of the theorem applies its last step to the frame's setvar variables and
-to an inhabitant for each dummy one.
+with W the setvar variables of A and q the steps that prove its hypotheses: each hypothesis of A must hold for every
+value of its setvar variables, which the step gives by binding the symbols of their images again around q. A step the
+compressed proof saves is let-bound as a function of all the setvar variables, applied where it is used, since a binder
+there may bind some of them again. The dummy variables are let-bound to an inhabitant of their typecode.
 
 Each syntax axiom denotes a term by the semantics: a primitive of the semantics, a definition, or, in the axiomatic
 semantics, a declared constant. A definition is an axiom ( C <-> D ) or C = D whose left side is a new syntax axiom
@@ -517,10 +517,16 @@ proofTermOf[context_, label_String] := Module[
 	(* the setvar variables of the proof: the frame's, then the dummy ones in the order they appear *)
 	setvars = Join[frame["Setvars"], Complement[run["Setvars"], frame["Setvars"]]];
 	local = Join[context, <|"VariableTypecodes" -> run["VariableTypecodes"], "ProofSetvars" -> setvars, "Frame" -> frame|>];
-	lets = Map[Function[saved, Inactive[Set][stepSymbol[First[saved]], stepTerm[local, Last[saved]]]], run["Saved"]];
-	final = termApply[
+	(* a saved step is a function of the proof's setvar variables, applied where it is used, which may be under binders
+	   that bind some of them again; every other step is a term in them, the dummy ones bound to an inhabitant *)
+	lets = Map[
+		Function[saved, Inactive[Set][stepSymbol[First[saved]], termFunction[setvarBinders[local, setvars], stepTerm[local, Last[saved]]]]],
+		run["Saved"]
+	];
+	final = Fold[
+		Function[{body, dummy}, Inactive[With][{Inactive[Set][variableSymbol[dummy], dummyInhabitant[local, dummy]]}, body]],
 		stepTerm[local, run["Result"]],
-		Join[Map[variableSymbol, frame["Setvars"]], Map[Function[setvar, dummyInhabitant[local, setvar]], Drop[setvars, Length[frame["Setvars"]]]]]
+		Reverse[Drop[setvars, Length[frame["Setvars"]]]]
 	];
 	termFunction[assertionBinders[local, label], Fold[Function[{body, binding}, Inactive[With][{binding}, body]], final, Reverse[lets]]]
 ]
@@ -558,13 +564,10 @@ definitionProofTerm[context_, label_String, definition_Association] := Catch[
 	"translation"
 ]
 
-(* a step's term: closed over the setvar variables of the proof *)
-stepTerm[context_, savedStep[index_Integer]] := stepSymbol[index]
+(* a step's term, in the setvar variables of the proof as the binders around it bind them *)
+stepTerm[context_, savedStep[index_Integer]] := termApply[stepSymbol[index], Map[variableSymbol, context["ProofSetvars"]]]
 
-stepTerm[context_, hypothesisStep[index_Integer]] := termFunction[
-	setvarBinders[context, context["ProofSetvars"]],
-	termApply[hypothesisSymbol[index], Map[variableSymbol, context["Frame"]["Setvars"]]]
-]
+stepTerm[context_, hypothesisStep[index_Integer]] := termApply[hypothesisSymbol[index], Map[variableSymbol, context["Frame"]["Setvars"]]]
 
 stepTerm[context_, assertionStep[label_String, substitution_Association, hypotheses_List]] := With[
 	{renaming = aliasRenaming[frameOf[context, label], substitution]},
@@ -582,29 +585,24 @@ stepTerm[context_, assertionStep[label_String, substitution_Association, hypothe
 	]
 ]
 
-applicationTerm[context_, label_String, substitution_Association, hypotheses_List] := With[
-	{
-		frame = frameOf[context, label],
-		recall = Function[step, termApply[stepTerm[context, step], Map[variableSymbol, context["ProofSetvars"]]]]
-	},
+(* an application: each hypothesis of the assertion holds for every value of its setvar variables, which binding the
+   symbols of their images around the hypothesis's step gives *)
+applicationTerm[context_, label_String, substitution_Association, hypotheses_List] := With[{frame = frameOf[context, label]},
 	With[{images = Map[Function[setvar, First[substitution[setvar]]], frame["Setvars"]]},
-		termFunction[
-			setvarBinders[context, context["ProofSetvars"]],
-			termApply[
-				label,
-				Join[
-					Map[
-						Function[other,
-							termFunction[
-								setvarBinders[context, Map[Function[setvar, First[substitution[setvar]]], frame["Dependencies"][First[other]]]],
-								translateTree[context, proofDependencies[context], substitution[First[other]]]
-							]
-						],
-						frame["Others"]
+		termApply[
+			label,
+			Join[
+				Map[
+					Function[other,
+						termFunction[
+							setvarBinders[context, Map[Function[setvar, First[substitution[setvar]]], frame["Dependencies"][First[other]]]],
+							translateTree[context, proofDependencies[context], substitution[First[other]]]
+						]
 					],
-					Map[Function[step, termFunction[setvarBinders[context, images], recall[step]]], hypotheses],
-					Map[variableSymbol, images]
-				]
+					frame["Others"]
+				],
+				Map[Function[step, termFunction[setvarBinders[context, images], stepTerm[context, step]]], hypotheses],
+				Map[variableSymbol, images]
 			]
 		]
 	]

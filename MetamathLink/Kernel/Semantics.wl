@@ -115,7 +115,43 @@ metamathSemantics["ZFC"] := <|
 (* the variants of set.mm's axioms that proofs apply: an axiom whose setvar variables have no $d may be applied with two of
    them the same, which in higher-order abstract syntax is another statement *)
 $zfcAxiomVariants := <|
-	"ax-7{z:=y}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[e, "setClass"[x] == "setClass"[y]], Typed[f, "setClass"[x] == "setClass"[y]]},
-		"equalityReflexivity"["setClass"[y]]
+	"ax-6{y:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[h, ForAll[{Typed[x, "Set"]}, Not["setClass"[x] == "setClass"[x]]]]}, h[x, "equalityReflexivity"["setClass"[x]]]]],
+	"ax-7{y:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[z, "Set"], Typed[e, "setClass"[x] == "setClass"[x]], Typed[f, "setClass"[x] == "setClass"[z]]}, f]],
+	"ax-7{z:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[e, "setClass"[x] == "setClass"[y]], Typed[f, "setClass"[x] == "setClass"[x]]}, "equalitySymmetry"[e]]],
+	"ax-7{z:=y}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[e, "setClass"[x] == "setClass"[y]], Typed[f, "setClass"[x] == "setClass"[y]]}, "equalityReflexivity"["setClass"[y]]]],
+	"ax-7{y:=x,z:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[e, "setClass"[x] == "setClass"[x]], Typed[f, "setClass"[x] == "setClass"[x]]}, f]],
+	"ax-8{y:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[z, "Set"], Typed[e, "setClass"[x] == "setClass"[x]], Typed[m, "classElement"["setClass"[x], "setClass"[z]]]}, m]],
+	"ax-8{z:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[e, "setClass"[x] == "setClass"[y]]},
+		Construct["equalitySubstitution", "Class", Function[{Typed[c, "Class"]}, "classElement"[c, "setClass"[x]]], "setClass"[x], "setClass"[y], e]
+	]],
+	"ax-8{z:=y}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[e, "setClass"[x] == "setClass"[y]]},
+		Construct["equalitySubstitution", "Class", Function[{Typed[c, "Class"]}, "classElement"[c, "setClass"[y]]], "setClass"[x], "setClass"[y], e]
+	]],
+	"ax-8{y:=x,z:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[e, "setClass"[x] == "setClass"[x]], Typed[m, "classElement"["setClass"[x], "setClass"[x]]]}, m]],
+	"ax-9{y:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[z, "Set"], Typed[e, "setClass"[x] == "setClass"[x]], Typed[m, "classElement"["setClass"[z], "setClass"[x]]]}, m]],
+	"ax-9{z:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[e, "setClass"[x] == "setClass"[y]]},
+		Construct["equalitySubstitution", "Class", Function[{Typed[c, "Class"]}, "classElement"["setClass"[x], c]], "setClass"[x], "setClass"[y], e]
+	]],
+	"ax-9{z:=y}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[e, "setClass"[x] == "setClass"[y]]},
+		Construct["equalitySubstitution", "Class", Function[{Typed[c, "Class"]}, "classElement"["setClass"[y], c]], "setClass"[x], "setClass"[y], e]
+	]],
+	"ax-9{y:=x,z:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[e, "setClass"[x] == "setClass"[x]], Typed[m, "classElement"["setClass"[x], "setClass"[x]]]}, m]],
+	"ax-11{y:=x}" -> HoldComplete[Function[{Typed[\[CurlyPhi], TypeSpecifier[{"Set"} -> TypeUniverse[0]]], Typed[x, "Set"], Typed[h, ForAll[{Typed[x, "Set"]}, ForAll[{Typed[x, "Set"]}, \[CurlyPhi][x]]]]}, h]],
+	"ax-12{y:=x}" -> HoldComplete[Function[
+		{
+			Typed[\[CurlyPhi], TypeSpecifier[{"Set"} -> TypeUniverse[0]]], Typed[x, "Set"], Typed[e, "setClass"[x] == "setClass"[x]],
+			Typed[h, ForAll[{Typed[x, "Set"]}, \[CurlyPhi][x]]], Typed[w, "Set"], Typed[f, "setClass"[w] == "setClass"[w]]
+		},
+		h[w]
+	]],
+	"ax-13{y:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[z, "Set"], Typed[n, Not["setClass"[x] == "setClass"[x]]]},
+		Typed["falseElimination"[n["equalityReflexivity"["setClass"[x]]]], Implies["setClass"[x] == "setClass"[z], ForAll[{Typed[x, "Set"]}, "setClass"[x] == "setClass"[z]]]]
+	]],
+	"ax-13{z:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[n, Not["setClass"[x] == "setClass"[y]]], Typed[e, "setClass"[y] == "setClass"[x]]},
+		Typed["falseElimination"[n["equalitySymmetry"[e]]], ForAll[{Typed[x, "Set"]}, "setClass"[y] == "setClass"[x]]]
+	]],
+	"ax-13{z:=y}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[n, Not["setClass"[x] == "setClass"[y]]], Typed[e, "setClass"[y] == "setClass"[y]], Typed[w, "Set"]}, e]],
+	"ax-13{y:=x,z:=x}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[n, Not["setClass"[x] == "setClass"[x]]]},
+		Typed["falseElimination"[n["equalityReflexivity"["setClass"[x]]]], Implies["setClass"[x] == "setClass"[x], ForAll[{Typed[x, "Set"]}, "setClass"[x] == "setClass"[x]]]]
 	]]
 |>
