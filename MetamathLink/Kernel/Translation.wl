@@ -54,6 +54,10 @@ PackageScoped[variableSymbol]
 PackageScoped[translateTree]
 PackageScoped[statementTerm]
 PackageScoped[proofTerm]
+PackageScoped[proofTermWithVariants]
+PackageScoped[variantLabel]
+PackageScoped[variantEntry]
+PackageScoped[variantConstructorDefinition]
 PackageScoped[definitionOf]
 PackageScoped[heldTerm]
 PackageScoped[translationContext]
@@ -73,6 +77,11 @@ translateTree::usage = "translateTree[context, dependencies, tree] gives the ter
 ones applied to the setvar variables dependencies gives for each."
 statementTerm::usage = "statementTerm[context, label] gives the statement of the assertion label as an inactive term."
 proofTerm::usage = "proofTerm[context, label] gives the proof term of the theorem label as an inactive term, or a Failure."
+proofTermWithVariants::usage = "proofTermWithVariants[context, label] gives {term, variants}: the proof term and the variants {assertion, renaming} it applies."
+variantLabel::usage = "variantLabel[label, renaming] gives the name of the variant of the assertion label with its setvar variables renamed, label{z:=y}."
+variantConstructorDefinition::usage = "variantConstructorDefinition[context, constructor, renaming] gives the definition record of the constructor with \
+its setvar parameters renamed, merged: its parameters, dependencies and right side, and the context with its defining axiom's variant."
+variantEntry::usage = "variantEntry[context, label, renaming] gives the statement of the variant: the assertion's frame with the renamed variables merged."
 definitionOf::usage = "definitionOf[context, label] gives <|\"Constructor\" -> c, \"Left\" -> tree, \"Right\" -> tree|> when the axiom label defines the \
 syntax axiom c, and None otherwise."
 heldTerm::usage = "heldTerm[term] gives HoldComplete of the inactive term activated, its heads the surface syntax of TypeTheory."
@@ -92,6 +101,7 @@ definitions read so far."
 (*Inactive terms*)
 
 
+heldTerm[term_HoldComplete] := term
 heldTerm[term_] := HoldComplete[term] /. Inactive[head_Symbol] :> head
 
 termForAll[{}, body_] := body
@@ -182,9 +192,11 @@ translateTree[context_, dependencies_Association, variableNode[variable_String]]
 
 translateTree[context_, dependencies_Association, syntaxNode[label_String, arguments_List]] := Which[
 	KeyExistsQ[context["Semantics"]["Syntax"], label],
-		context["Semantics"]["Syntax"][label][
-			Function[tree, translateTree[context, dependencies, tree]],
-			AssociationThread[Map[Last, context["Database"]["Statements"][label]["Floating"]], arguments]
+		With[{named = AssociationThread[Map[Last, context["Database"]["Statements"][label]["Floating"]], arguments]},
+			context["Semantics"]["Syntax"][label][
+				Function[tree, translateTree[withScope[context, Cases[Values[named], variableNode[name_String] /; setvarNameQ[context, name] :> name]], dependencies, tree]],
+				named
+			]
 		],
 	KeyExistsQ[context["Definitions"], label],
 		definedConstructorTerm[context, dependencies, context["Definitions"][label], arguments],
@@ -193,6 +205,14 @@ translateTree[context_, dependencies_Association, syntaxNode[label_String, argum
 	True,
 		Throw[Failure["UndefinedSyntax", <|"MessageTemplate" -> "The syntax `1` has no meaning in the semantics `2`.", "MessageParameters" -> {label, context["Semantics"]["Name"]}|>], "translation"]
 ]
+
+(* the setvar variables in scope, tracked only in the value of a definition, where a dummy of its right side may be passed
+   where it is not bound; in a statement or a proof every setvar variable is bound *)
+withScope[context_, names_List] := If[KeyExistsQ[context, "Scope"], Append[context, "Scope" -> Union[context["Scope"], names]], context]
+
+valueArgument[context_, dependencies_, variableNode[name_String]] /; KeyExistsQ[context, "Scope"] && ! MemberQ[context["Scope"], name] :=
+	Lookup[context["Semantics"]["Inhabitants"], variableTypecode[context, name]]
+valueArgument[context_, dependencies_, argument_] := translateTree[context, dependencies, argument]
 
 setvarNameQ[context_, variable_String] := MemberQ[context["Semantics"]["BinderTypecodes"], variableTypecode[context, variable]]
 
@@ -204,31 +224,155 @@ dummyInhabitant[context_, variable_String] := Lookup[
 	Throw[Failure["NoInhabitant", <|"MessageTemplate" -> "The dummy variable `1` has no inhabitant to stand for it.", "MessageParameters" -> {variable}|>], "translation"]
 ]
 
-(* a defined syntax axiom: its setvar arguments as they are, every other argument a function of the setvar arguments it
-   may depend on, binding the symbols of the variables there *)
+(* a defined syntax axiom: the setvar arguments it uses as values, free in its definition, as they are; every other
+   argument a function of the setvar arguments it may depend on, binding the symbols of the variables there. A setvar
+   argument the definition only binds is not passed: it names the binders of those functions *)
 definedConstructorTerm[context_, dependencies_, definition_Association, arguments_List] := With[
-	{setvarArguments = Association[MapThread[Rule, {definition["Parameters"], arguments}]]},
-	If[ ! DuplicateFreeQ[Map[setvarArguments, definition["SetvarParameters"]]],
-		Throw[Failure["AliasedSyntax", <|
-			"MessageTemplate" -> "The syntax `1` is used with the same variable for two of its setvar arguments, which needs a variant of its definition.",
-			"MessageParameters" -> {definition["Constructor"]}
-		|>], "translation"]
-	];
-	termApply[
-		definition["Constructor"],
-		MapThread[
-			Function[{parameter, argument},
-				If[ MemberQ[definition["SetvarParameters"], parameter],
-					translateTree[context, dependencies, argument],
-					termFunction[
-						Map[Function[setvar, termTyped[variableSymbol[First[setvarArguments[setvar]]], setType[context]]], definition["Dependencies"][parameter]],
-						translateTree[context, dependencies, argument]
-					]
-				]
-			],
-			{definition["Parameters"], arguments}
+	{named = Association[MapThread[Rule, {definition["Parameters"], arguments}]]},
+	With[{renaming = syntaxRenaming[definition, named]},
+		If[ renaming === <||>,
+			constructorApplication[context, dependencies, definition, named],
+			(
+				Sow[{"syntax", definition["Constructor"], renaming}, "variant"];
+				constructorApplication[context, dependencies, variantConstructorDefinition[context, definition["Constructor"], renaming], named]
+			)
 		]
 	]
+]
+
+(* the renaming of a constructor's setvar parameters that a use with the same variable for two of them asks for: each to
+   the first with the same variable *)
+syntaxRenaming[definition_Association, named_Association] := With[{names = Map[Function[parameter, First[named[parameter]]], definition["SetvarParameters"]]},
+	Association[Catenate[MapThread[
+		Function[{parameter, name}, With[{first = First[Pick[definition["SetvarParameters"], names, name]]}, If[first === parameter, {}, {parameter -> first}]]],
+		{definition["SetvarParameters"], names}
+	]]]
+]
+
+constructorApplication[context_, dependencies_, definition_Association, named_Association] := termApply[
+	definition["Constructor"],
+	Catenate[Map[
+		Function[parameter,
+			With[{argument = named[parameter]},
+				Which[
+					MemberQ[definition["ValueParameters"], parameter],
+						{valueArgument[context, dependencies, argument]},
+					MemberQ[definition["SetvarParameters"], parameter],
+						{},
+					True,
+						With[{bound = Map[Function[setvar, First[named[setvar]]], definition["Dependencies"][parameter]]},
+							{termFunction[
+								Map[Function[name, termTyped[variableSymbol[name], setType[context]]], bound],
+								translateTree[withScope[context, bound], dependencies, argument]
+							]}
+						]
+				]
+			]
+		],
+		definition["Parameters"]
+	]]
+]
+
+(* a constructor with setvar parameters merged: defined by its definition's right side, renamed, its parameters and
+   dependencies those of the defining axiom's variant *)
+variantConstructorDefinition[context_, constructor_String, renaming_Association] := With[
+	{definition = context["Definitions"][constructor]},
+	With[
+		{
+			label = variantLabel[definition["Label"], renaming],
+			extended = Append[context, "Database" -> Append[context["Database"], "Statements" -> Append[
+				context["Database"]["Statements"],
+				variantLabel[definition["Label"], renaming] -> variantEntry[context, definition["Label"], renaming]
+			]]]
+		},
+		With[
+			{
+				frame = frameOf[extended, label],
+				parameters = DeleteDuplicates[Replace[definition["Parameters"], renaming, {1}]],
+				right = renameTree[definition["Right"], renaming]
+			},
+			With[{setvarParameters = Select[parameters, Function[parameter, MemberQ[frame["Setvars"], parameter]]]},
+				With[
+					{
+						dependencies = Association[Map[
+							Function[parameter, parameter -> Select[setvarParameters, Function[setvar, ! disjointQ[frame["Disjoint"], setvar, parameter]]]],
+							Complement[parameters, setvarParameters]
+						]]
+					},
+					With[{free = freeVariableSymbols[translateTree[Append[extended, "VariableTypecodes" -> variableTypecodesOf[extended["Database"], label]], dependencies, right]]},
+						<|
+							"Constructor" -> variantLabel[constructor, renaming],
+							"Label" -> label,
+							"Context" -> extended,
+							"Parameters" -> parameters,
+							"SetvarParameters" -> setvarParameters,
+							"ValueParameters" -> Select[setvarParameters, Function[setvar, MemberQ[free, variableSymbol[setvar]]]],
+							"Dependencies" -> dependencies,
+							"Right" -> right
+						|>
+					]
+				]
+			]
+		]
+	]
+]
+
+(* the symbols of Metamath variables free in an inactive term, a binder's list binding its symbols in its body *)
+freeVariableSymbols[Inactive[ForAll | Function | Exists][binders_List, body_]] := Union[
+	Complement[freeVariableSymbols[body], Cases[binders, Inactive[Typed][symbol_Symbol, _] :> symbol]],
+	Catenate[Cases[binders, Inactive[Typed][_, type_] :> freeVariableSymbols[type]]]
+]
+freeVariableSymbols[symbol_Symbol] := If[Context[symbol] === "WolframInstitute`MetamathLink`Variables`", {symbol}, {}]
+freeVariableSymbols[head_[arguments___]] := Union[freeVariableSymbols[head], Catenate[Map[freeVariableSymbols, {arguments}]]]
+freeVariableSymbols[_] := {}
+
+
+(* ::Subsection:: *)
+(*Variants*)
+
+
+(* An assertion applied with the same variable for two of its setvar variables, which it allows when they have no $d, is
+   a different statement in higher-order abstract syntax: its variant, A{z:=y}, the assertion with z renamed y. The
+   variant's trees are the assertion's renamed, its $d pairs renamed, so a wff variable depends on y when it may depend on
+   every setvar variable renamed y; a variant of a theorem is proved by its proof with the renaming, which may ask for
+   variants in turn. *)
+variantLabel[label_String, renaming_Association] := label <> "{" <> StringRiffle[KeyValueMap[Function[{from, to}, from <> ":=" <> to], renaming], ","] <> "}"
+
+variantEntry[context_, label_String, renaming_Association] := With[{entry = context["Database"]["Statements"][label]},
+	<|
+		"Kind" -> entry["Kind"],
+		"Label" -> variantLabel[label, renaming],
+		"Typecode" -> entry["Typecode"],
+		"Variant" -> <|"Of" -> label, "Renaming" -> renaming|>,
+		"Floating" -> Select[entry["Floating"], Function[floating, ! KeyExistsQ[renaming, Last[floating]]]],
+		"Essential" -> entry["Essential"],
+		"Disjoint" -> DeleteDuplicates[Map[Sort, Replace[entry["Disjoint"], renaming, {2}]]]
+	|>
+]
+
+renameTree[tree_, renaming_Association] := Replace[tree, variableNode[variable_String] :> variableNode[Lookup[renaming, variable, variable]], {0, Infinity}]
+
+(* the trees of an assertion and of its hypotheses, a variant's renamed from its assertion's *)
+assertionTree[context_, label_String] := With[{entry = context["Database"]["Statements"][label]},
+	If[ KeyExistsQ[entry, "Variant"],
+		renameTree[assertionTree[context, entry["Variant"]["Of"]], entry["Variant"]["Renaming"]],
+		confirmTree[statementTree[context["Database"], label]]
+	]
+]
+
+hypothesisTree[context_, label_String, hypothesis_String] := With[{entry = context["Database"]["Statements"][label]},
+	If[ KeyExistsQ[entry, "Variant"],
+		renameTree[hypothesisTree[context, entry["Variant"]["Of"], hypothesis], entry["Variant"]["Renaming"]],
+		confirmTree[statementTree[context["Database"], label, hypothesis]]
+	]
+]
+
+(* the renaming an application asks for: each setvar variable of the assertion to the first that has the same image *)
+aliasRenaming[frame_Association, substitution_Association] := With[{images = Map[Function[setvar, First[substitution[setvar]]], frame["Setvars"]]},
+	Association[Catenate[MapThread[
+		Function[{setvar, image}, With[{first = First[Pick[frame["Setvars"], images, image]]}, If[first === setvar, {}, {setvar -> first}]]],
+		{frame["Setvars"], images}
+	]]]
 ]
 
 
@@ -252,9 +396,9 @@ statementTermOf[context_, label_String] := With[
 			Map[Function[other, termTyped[variableSymbol[First[other]], parameterType[context, Last[other], frame["Dependencies"][First[other]]]]], frame["Others"]],
 			Fold[
 				Function[{conclusion, hypothesis}, termImplies[hypothesis, conclusion]],
-				closed[translateTree[local, frame["Dependencies"], confirmTree[statementTree[database, label]]]],
+				closed[translateTree[local, frame["Dependencies"], assertionTree[context, label]]],
 				Reverse[Map[
-					Function[hypothesis, closed[translateTree[local, frame["Dependencies"], confirmTree[statementTree[database, label, hypothesis]]]]],
+					Function[hypothesis, closed[translateTree[local, frame["Dependencies"], hypothesisTree[context, label, hypothesis]]]],
 					frame["Essential"]
 				]]
 			]
@@ -266,6 +410,12 @@ confirmTree[failure_Failure] := Throw[failure, "translation"]
 confirmTree[tree_] := tree
 
 variableTypecodesOf[database_, label_String] := Association[Map[Function[floating, Last[floating] -> First[Rest[floating]]], database["Statements"][label]["Floating"]]]
+
+(* a proof term and the variants it asks for, {label, renaming} *)
+proofTermWithVariants[context_, label_String] := Replace[Reap[proofTerm[context, label], "variant"], {
+	{term_, {}} :> {term, {}},
+	{term_, {variants_List}} :> {term, DeleteDuplicates[variants]}
+}]
 
 
 (* ::Subsection:: *)
@@ -287,42 +437,63 @@ definitionOf[context_, label_String] := With[{tree = statementTree[context["Data
 ]
 
 (* the definition of the constructor: its parameters are the variables of the left side; each that is not a setvar is a
-   function of the setvar parameters it is not disjoint from in the defining axiom *)
+   function of the setvar parameters it is not disjoint from in the defining axiom; a setvar parameter is a value of the
+   constructor when it is free in the translated right side *)
 constructorDefinition[context_, label_String, definition_Association] := With[
 	{
 		frame = frameOf[context, label],
 		parameters = Map[First, Last[definition["Left"]]]
 	},
 	With[{setvarParameters = Select[parameters, Function[parameter, MemberQ[frame["Setvars"], parameter]]]},
-		<|
-			"Constructor" -> definition["Constructor"],
-			"Label" -> label,
-			"Parameters" -> parameters,
-			"SetvarParameters" -> setvarParameters,
-			"Dependencies" -> Association[Map[
-				Function[parameter, parameter -> Select[setvarParameters, Function[setvar, ! disjointQ[frame["Disjoint"], setvar, parameter]]]],
-				Complement[parameters, setvarParameters]
-			]]
-		|>
+		With[
+			{
+				dependencies = Association[Map[
+					Function[parameter, parameter -> Select[setvarParameters, Function[setvar, ! disjointQ[frame["Disjoint"], setvar, parameter]]]],
+					Complement[parameters, setvarParameters]
+				]]
+			},
+			With[
+				{
+					free = freeVariableSymbols[translateTree[
+						Append[context, "VariableTypecodes" -> variableTypecodesOf[context["Database"], label]],
+						dependencies,
+						definition["Right"]
+					]]
+				},
+				<|
+					"Constructor" -> definition["Constructor"],
+					"Label" -> label,
+					"Parameters" -> parameters,
+					"SetvarParameters" -> setvarParameters,
+					"ValueParameters" -> Select[setvarParameters, Function[setvar, MemberQ[free, variableSymbol[setvar]]]],
+					"Dependencies" -> dependencies,
+					"Right" -> definition["Right"]
+				|>
+			]
+		]
 	]
 ]
 
-(* the value of the constructor: a function of its parameters, the right side in their terms *)
+(* the value of the constructor: a function of its value and function parameters, the right side in their terms *)
 constructorValue[context_, label_String, constructor_Association, right_] := With[
 	{
-		local = Append[context, "VariableTypecodes" -> variableTypecodesOf[context["Database"], label]],
+		local = Join[context, <|"VariableTypecodes" -> variableTypecodesOf[context["Database"], label], "Scope" -> constructor["ValueParameters"]|>],
 		typecodes = variableTypecodesOf[context["Database"], label]
 	},
 	termFunction[
-		Map[
+		Catenate[Map[
 			Function[parameter,
-				If[ MemberQ[constructor["SetvarParameters"], parameter],
-					termTyped[variableSymbol[parameter], setType[context]],
-					termTyped[variableSymbol[parameter], parameterType[context, typecodes[parameter], constructor["Dependencies"][parameter]]]
+				Which[
+					MemberQ[constructor["ValueParameters"], parameter],
+						{termTyped[variableSymbol[parameter], setType[context]]},
+					MemberQ[constructor["SetvarParameters"], parameter],
+						{},
+					True,
+						{termTyped[variableSymbol[parameter], parameterType[context, typecodes[parameter], constructor["Dependencies"][parameter]]]}
 				]
 			],
 			constructor["Parameters"]
-		],
+		]],
 		translateTree[local, constructor["Dependencies"], right]
 	]
 ]
@@ -364,7 +535,7 @@ assertionBinders[context_, label_String] := With[
 			Function[{hypothesis, index},
 				termTyped[
 					hypothesisSymbol[First[index]],
-					termForAll[setvarBinders[context, frame["Setvars"]], translateTree[local, frame["Dependencies"], confirmTree[statementTree[context["Database"], label, hypothesis]]]]
+					termForAll[setvarBinders[context, frame["Setvars"]], translateTree[local, frame["Dependencies"], hypothesisTree[context, label, hypothesis]]]
 				]
 			],
 			frame["Essential"]
@@ -394,21 +565,31 @@ stepTerm[context_, hypothesisStep[index_Integer]] := termFunction[
 ]
 
 stepTerm[context_, assertionStep[label_String, substitution_Association, hypotheses_List]] := With[
+	{renaming = aliasRenaming[frameOf[context, label], substitution]},
+	If[ renaming === <||>,
+		applicationTerm[context, label, substitution, hypotheses],
+		(
+			Sow[{label, renaming}, "variant"];
+			applicationTerm[
+				Append[context, "Database" -> Append[context["Database"], "Statements" -> Append[context["Database"]["Statements"], variantLabel[label, renaming] -> variantEntry[context, label, renaming]]]],
+				variantLabel[label, renaming],
+				substitution,
+				hypotheses
+			]
+		)
+	]
+]
+
+applicationTerm[context_, label_String, substitution_Association, hypotheses_List] := With[
 	{
 		frame = frameOf[context, label],
 		recall = Function[step, termApply[stepTerm[context, step], Map[variableSymbol, context["ProofSetvars"]]]]
 	},
 	With[{images = Map[Function[setvar, First[substitution[setvar]]], frame["Setvars"]]},
-		If[ ! DuplicateFreeQ[images],
-			Throw[Failure["AliasedApplication", <|
-				"MessageTemplate" -> "The step applies `1` with the same variable for two of its setvar variables, which needs a variant of it.",
-				"MessageParameters" -> {label}
-			|>], "translation"]
-		];
 		termFunction[
 			setvarBinders[context, context["ProofSetvars"]],
 			termApply[
-				assertionReference[context, label],
+				label,
 				Join[
 					Map[
 						Function[other,
@@ -430,9 +611,6 @@ stepTerm[context_, assertionStep[label_String, substitution_Association, hypothe
 (* the variables of the theorem's frame, applied to their dependencies; a dummy is not among them *)
 proofDependencies[context_] := context["Frame"]["Dependencies"]
 
-(* every assertion is declared under its label, an axiom proved as the semantics proves it *)
-assertionReference[context_, label_String] := label
-
 
 (* ::Subsection:: *)
 (*Running a proof*)
@@ -447,7 +625,7 @@ runProof[context_, label_String] := Module[
 		statement, proof, stack = {}, saved = <||>, savedProofs = {}, setvars = {}, typecodes = <||>, result
 	},
 	statement = database["Statements"][label];
-	proof = databaseProof[database, label];
+	proof = databaseProof[database, Lookup[Lookup[statement, "Variant", <||>], "Of", label]];
 	typecodes = variableTypecodesOf[database, label];
 	Scan[
 		Function[step,
@@ -478,7 +656,7 @@ runProof[context_, label_String] := Module[
 		proof
 	];
 	result = Last[stack];
-	If[ Length[stack] =!= 1 || ! MatchQ[result, proofItem[_, _]] || Last[result] =!= confirmTree[statementTree[database, label]],
+	If[ Length[stack] =!= 1 || ! MatchQ[result, proofItem[_, _]] || Last[result] =!= assertionTree[context, label],
 		Throw[Failure["ProofMismatch", <|"MessageTemplate" -> "The proof of `1` does not end in its statement.", "MessageParameters" -> {label}|>], "translation"]
 	];
 	<|"Result" -> First[result], "Saved" -> savedProofs, "Setvars" -> setvars, "VariableTypecodes" -> typecodes|>
@@ -488,9 +666,9 @@ runProof[context_, label_String] := Module[
 proofItemOf[context_, theorem_String, statement_, step_String, stack_List] := With[{entry = context["Database"]["Statements"][step]},
 	Switch[entry["Kind"],
 		"Floating",
-			{0, syntaxItem[variableNode[entry["Variable"]], entry["Typecode"]]},
+			{0, syntaxItem[variableNode[Lookup[Lookup[Lookup[statement, "Variant", <||>], "Renaming", <||>], entry["Variable"], entry["Variable"]]], entry["Typecode"]]},
 		"Essential",
-			{0, proofItem[hypothesisStep[First[FirstPosition[statement["Essential"], step]]], confirmTree[statementTree[context["Database"], theorem, step]]]},
+			{0, proofItem[hypothesisStep[First[FirstPosition[statement["Essential"], step]]], hypothesisTree[context, theorem, step]]},
 		"Axiom" | "Theorem",
 			assertionItem[context, entry, stack]
 	]

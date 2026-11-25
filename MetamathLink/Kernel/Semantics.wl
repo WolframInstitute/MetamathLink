@@ -19,6 +19,9 @@ A semantics is an association:
 	"Syntax"                   label -> Function[{translate, arguments}, term]: a primitive syntax axiom, its arguments
 	                           by variable name
 	"AxiomProofs"              label -> proof: the proof of an axiom, an inactive term or the name of a theorem
+	"LibraryAssertions"        the axioms the environment proves under their labels, each checked against its translation
+	"LibraryDefinitions"       the syntax the environment defines under its label, checked against its df- axiom
+	"AxiomVariants"            name -> HoldComplete[proof]: the variants of axioms with setvar variables identified, ax-7{z:=y}
 	"DefinitionHeads"          the syntax of the defining axioms, ( C <-> D ) and C = D
 	"Reflexivity"              head -> the reflexivity that proves a defining axiom of that head
 *)
@@ -63,6 +66,9 @@ metamathSemantics["Axiomatic"] := <|
 	"Inhabitants" -> <||>,
 	"Syntax" -> <||>,
 	"AxiomProofs" -> <||>,
+	"LibraryAssertions" -> {},
+	"LibraryDefinitions" -> {},
+	"AxiomVariants" -> <||>,
 	"DefinitionHeads" -> {},
 	"Reflexivity" -> <||>
 |>
@@ -92,90 +98,24 @@ metamathSemantics["ZFC"] := <|
 		"wcel" -> Function[{translate, arguments}, "classElement"[translate[arguments["A"]], translate[arguments["B"]]]],
 		"cab" -> Function[{translate, arguments}, "classAbstraction"[Inactive[Function][binding[arguments["x"]], translate[arguments["ph"]]]]]
 	|>,
-	"AxiomProofs" -> $zfcAxiomProofs,
+	"AxiomProofs" -> <||>,
+	(* the axioms the ZFC library proves under their labels, and the syntax it defines as their df- axioms do *)
+	"LibraryAssertions" -> {
+		"ax-mp", "ax-1", "ax-2", "ax-3", "df-bi", "df-an", "df-or", "df-tru", "df-fal", "df-ex",
+		"ax-gen", "ax-4", "ax-5", "ax-6", "ax-7", "ax-8", "ax-9", "ax-10", "ax-11", "ax-12", "ax-13",
+		"df-clab", "df-cleq", "df-clel",
+		"ax-ext", "ax-rep", "ax-sep", "ax-nul", "ax-pow", "ax-pr", "ax-un", "ax-reg", "ax-inf", "ax-ac"
+	},
+	"LibraryDefinitions" -> {"wsb"},
+	"AxiomVariants" -> $zfcAxiomVariants,
 	"DefinitionHeads" -> {"wb", "wceq"},
 	"Reflexivity" -> <|"wb" -> "equivalentReflexivity", "wceq" -> "equalityReflexivity"|>
 |>
 
-(* the axioms of propositional logic and the definitions of its primitive connectives, proved from the prelude; they move
-   to the ZFC library as named theorems *)
-$zfcAxiomProofs := <|
-	"ax-mp" -> Inactive[Function][
-		{Inactive[Typed][φ, Inactive[TypeUniverse][0]], Inactive[Typed][ψ, Inactive[TypeUniverse][0]], Inactive[Typed][minor, φ], Inactive[Typed][major, Inactive[Implies][φ, ψ]]},
-		major[minor]
-	],
-	"ax-1" -> Inactive[Function][
-		{Inactive[Typed][φ, Inactive[TypeUniverse][0]], Inactive[Typed][ψ, Inactive[TypeUniverse][0]], Inactive[Typed][a, φ], Inactive[Typed][b, ψ]},
-		a
-	],
-	"ax-2" -> Inactive[Function][
-		{
-			Inactive[Typed][φ, Inactive[TypeUniverse][0]], Inactive[Typed][ψ, Inactive[TypeUniverse][0]], Inactive[Typed][χ, Inactive[TypeUniverse][0]],
-			Inactive[Typed][f, Inactive[Implies][φ, Inactive[Implies][ψ, χ]]], Inactive[Typed][g, Inactive[Implies][φ, ψ]], Inactive[Typed][a, φ]
-		},
-		f[a][g[a]]
-	],
-	"ax-3" -> Inactive[Function][
-		{
-			Inactive[Typed][φ, Inactive[TypeUniverse][0]], Inactive[Typed][ψ, Inactive[TypeUniverse][0]],
-			Inactive[Typed][f, Inactive[Implies][Inactive[Not][φ], Inactive[Not][ψ]]], Inactive[Typed][b, ψ]
-		},
-		"doubleNegationElimination"[φ, Inactive[Function][{Inactive[Typed][n, Inactive[Not][φ]]}, f[n][b]]]
-	],
-	"df-bi" -> Inactive[Function][
-		{
-			Inactive[Typed][φ, Inactive[TypeUniverse][0]], Inactive[Typed][ψ, Inactive[TypeUniverse][0]],
-			Inactive[Typed][k, Inactive[Implies][
-				Inactive[Implies][Inactive[Equivalent][φ, ψ], Inactive[Not][Inactive[Implies][Inactive[Implies][φ, ψ], Inactive[Not][Inactive[Implies][ψ, φ]]]]],
-				Inactive[Not][Inactive[Implies][Inactive[Not][Inactive[Implies][Inactive[Implies][φ, ψ], Inactive[Not][Inactive[Implies][ψ, φ]]]], Inactive[Equivalent][φ, ψ]]]
-			]]
-		},
-		k[
-			Inactive[Function][{Inactive[Typed][e, Inactive[Equivalent][φ, ψ]], Inactive[Typed][m, Inactive[Implies][Inactive[Implies][φ, ψ], Inactive[Not][Inactive[Implies][ψ, φ]]]]}, m[Inactive[Part][e, 1], Inactive[Part][e, 2]]],
-			Inactive[Function][
-				{Inactive[Typed][b, Inactive[Not][Inactive[Implies][Inactive[Implies][φ, ψ], Inactive[Not][Inactive[Implies][ψ, φ]]]]]},
-				"equivalentIntroduction"[
-					"doubleNegationElimination"[Inactive[Implies][φ, ψ], Inactive[Function][{Inactive[Typed][n, Inactive[Not][Inactive[Implies][φ, ψ]]]},
-						b[Inactive[Function][{Inactive[Typed][f, Inactive[Implies][φ, ψ]]}, Inactive[Typed]["falseElimination"[n[f]], Inactive[Not][Inactive[Implies][ψ, φ]]]]]
-					]],
-					"doubleNegationElimination"[Inactive[Implies][ψ, φ], Inactive[Function][{Inactive[Typed][n, Inactive[Not][Inactive[Implies][ψ, φ]]]},
-						b[Inactive[Function][{Inactive[Typed][f, Inactive[Implies][φ, ψ]]}, n]]
-					]]
-				]
-			]
-		]
-	],
-	"df-an" -> Inactive[Function][
-		{Inactive[Typed][φ, Inactive[TypeUniverse][0]], Inactive[Typed][ψ, Inactive[TypeUniverse][0]]},
-		"equivalentIntroduction"[
-			Inactive[Function][{Inactive[Typed][a, Inactive[And][φ, ψ]], Inactive[Typed][k, Inactive[Implies][φ, Inactive[Not][ψ]]]}, k[Inactive[Part][a, 1], Inactive[Part][a, 2]]],
-			Inactive[Function][{Inactive[Typed][b, Inactive[Not][Inactive[Implies][φ, Inactive[Not][ψ]]]]},
-				"andIntroduction"[
-					"doubleNegationElimination"[φ, Inactive[Function][{Inactive[Typed][n, Inactive[Not][φ]]}, b[Inactive[Function][{Inactive[Typed][p, φ]}, Inactive[Typed]["falseElimination"[n[p]], Inactive[Not][ψ]]]]]],
-					"doubleNegationElimination"[ψ, Inactive[Function][{Inactive[Typed][n, Inactive[Not][ψ]]}, b[Inactive[Function][{Inactive[Typed][p, φ]}, n]]]]
-				]
-			]
-		]
-	],
-	"df-or" -> Inactive[Function][
-		{Inactive[Typed][φ, Inactive[TypeUniverse][0]], Inactive[Typed][ψ, Inactive[TypeUniverse][0]]},
-		"equivalentIntroduction"[
-			Inactive[Function][{Inactive[Typed][o, Inactive[Or][φ, ψ]], Inactive[Typed][n, Inactive[Not][φ]]},
-				Inactive[InductiveRecursor][Or][
-					Inactive[Function][{Inactive[Typed][t, Inactive[Or][φ, ψ]]}, ψ],
-					Inactive[Function][{Inactive[Typed][p, φ]}, Inactive[Typed]["falseElimination"[n[p]], ψ]],
-					Inactive[Function][{Inactive[Typed][q, ψ]}, q],
-					o
-				]
-			],
-			Inactive[Function][{Inactive[Typed][f, Inactive[Implies][Inactive[Not][φ], ψ]]},
-				Inactive[InductiveRecursor][Or][
-					Inactive[Function][{Inactive[Typed][t, Inactive[Or][φ, Inactive[Not][φ]]]}, Inactive[Or][φ, ψ]],
-					Inactive[Function][{Inactive[Typed][p, φ]}, "orIntroductionLeft"[p]],
-					Inactive[Function][{Inactive[Typed][n, Inactive[Not][φ]]}, "orIntroductionRight"[f[n]]],
-					"excludedMiddle"[φ]
-				]
-			]
-		]
-	]
+(* the variants of set.mm's axioms that proofs apply: an axiom whose setvar variables have no $d may be applied with two of
+   them the same, which in higher-order abstract syntax is another statement *)
+$zfcAxiomVariants := <|
+	"ax-7{z:=y}" -> HoldComplete[Function[{Typed[x, "Set"], Typed[y, "Set"], Typed[e, "setClass"[x] == "setClass"[y]], Typed[f, "setClass"[x] == "setClass"[y]]},
+		"equalityReflexivity"["setClass"[y]]
+	]]
 |>
