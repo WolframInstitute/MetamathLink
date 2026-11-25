@@ -10,7 +10,7 @@
    The import is strict: an axiom the ZFC semantics does not prove stops it. It prints the time, the constants, the
    axioms beyond the prelude's (none, when the import succeeds), each label's statement and axiom closure, checks the
    whole environment again with TypeTheoryCheck, and with --out exports it in Format 3. Run it under a memory cap:
-   2p2e4's cone, 3496 statements, takes 3 minutes and 0.5 GB. *)
+   2p2e4's cone, 3496 statements, takes about a minute and 1.3 GB with TypeTheory's compiled kernel. *)
 
 repositoryRoot = ParentDirectory[DirectoryName[$InputFileName]]
 
@@ -53,9 +53,12 @@ Print["axioms beyond the prelude's: ", Complement[Information[environment, "Axio
 
 Scan[
 	Function[label,
-		(* the statement stays inside its TypeTheoryTerm: taken out, it would evaluate *)
-		Print[label, ": ", TypeTheoryType[TypeTheoryTerm @@ {label, environment}]];
-		Print["    closure: ", Keys[TypeTheoryAxiomClosure[TypeTheoryTerm @@ {label, environment}]]]
+		(* the statement stays inside its TypeTheoryTerm: taken out, it would evaluate. The environment goes in as its symbol:
+		   TypeTheoryTerm given the environment's value reads the name as a string *)
+		With[{name = label},
+			Print[label, ": ", TypeTheoryType[TypeTheoryTerm[name, environment]]];
+			Print["    closure: ", Keys[TypeTheoryAxiomClosure[TypeTheoryTerm[name, environment]]]]
+		]
 	],
 	labels
 ]

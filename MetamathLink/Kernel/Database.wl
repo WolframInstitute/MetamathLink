@@ -72,7 +72,9 @@ metamathObjectQ[object_] := MatchQ[Head[object], _Symbol] && SymbolName[Head[obj
 
 metamathDatabase[File[path_String]] := metamathDatabase[ResourceFunction["MetamathImport"][File[path]]]
 
-metamathDatabase[File[path_String] /; StringEndsQ[path, ".wxf"]] := Import[path, "WXF"]
+metamathDatabase[File[path_String] /; StringEndsQ[path, ".wxf"]] := Replace[Import[path, "WXF"],
+	database_Association /; ! KeyExistsQ[database, "Identifier"] :> Append[database, "Identifier" -> CreateUUID["metamath-"]]
+]
 
 metamathDatabase[object_?metamathObjectQ] := With[
 	{
@@ -83,7 +85,7 @@ metamathDatabase[object_?metamathObjectQ] := With[
 			"FormulaTypecode" -> "wff"
 		|>
 	},
-	Append[database, "Grammar" -> grammarOf[database]]
+	Join[database, <|"Grammar" -> grammarOf[database], "Identifier" -> CreateUUID["metamath-"]|>]
 ]
 
 normalizedStatement["Axiom"[label_String, {typecode_String, symbols___String}, {disjoint_List, floating_List, essential_List}]] := <|
@@ -177,14 +179,28 @@ grammarOf[database_Association] := Map[
 	]
 ]
 
-(* no Enclose here: a rule puts the whole database into its body, which Enclose would walk at every call *)
+(* A statement's tree is parsed once for a database, which is never changed: a proof applies an assertion at every step,
+   and its tree is looked up, not parsed again. The cache is keyed by the database's identifier. No Enclose here: a rule
+   puts the whole database into its body, which Enclose would walk at every call. *)
+(* memoized as down values, a hash table that takes a new tree in constant time: an association assigned inside a Lookup of
+   it is copied at every new key *)
 statementTree[database_Association, label_String] := Replace[
+	cachedTree[database["Identifier"], label],
+	_cachedTree :> (cachedTree[database["Identifier"], label] = parsedStatementTree[database, label])
+]
+
+statementTree[database_Association, assertion_String, label_String] := Replace[
+	cachedTree[database["Identifier"], {assertion, label}],
+	_cachedTree :> (cachedTree[database["Identifier"], {assertion, label}] = parsedStatementTree[database, assertion, label])
+]
+
+parsedStatementTree[database_Association, label_String] := Replace[
 	databaseStatement[database, label],
 	statement_Association :> parseSymbols[database, formulaTypecode[database, statement["Typecode"]], statement["Symbols"], floatingTypecodes[statement], label]
 ]
 
 (* an essential hypothesis is parsed with the variables of an assertion that has it *)
-statementTree[database_Association, assertion_String, label_String] := Replace[
+parsedStatementTree[database_Association, assertion_String, label_String] := Replace[
 	{databaseStatement[database, assertion], databaseStatement[database, label]},
 	{
 		{frame_Association, statement_Association} :>

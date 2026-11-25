@@ -42,7 +42,8 @@ MetamathToTypeTheory[File[\"database.wxf\"]] imports a database MetamathLink sav
 Options: \"Semantics\" -> \"Axiomatic\" or \"ZFC\" (Automatic: \"ZFC\" when the database has set.mm's setvar typecode); \"Through\" -> label, the last \
 statement to import (All: every one); \"Cone\" -> label or {label, ...}, import only what these need; \"UnprovedAxioms\" -> \"Fail\" or \"Assume\", whether an axiom the semantics does not prove stops the import or is \
 declared as an axiom; Method -> \"Core\" or \"Surface\", whether declarations are given to TypeTheory's kernel as core terms, the \
-kernel's own form, or in surface syntax, elaborated first."
+kernel's own form, or in surface syntax, elaborated first; \"BatchSize\" -> n, how many declarations TypeTheory's compiled kernel checks at once \
+(Automatic: 1000; 1 adds them one at a time)."
 metamathDeclarations::usage = "metamathDeclarations[context, label] gives the declarations the statement label adds and the context after it, or a Failure."
 metamathCone::usage = "metamathCone[database, labels] gives the statements the assertions labels need, in the order of the database: the assertions \
 their proofs apply, the syntax of every statement with its defining axiom, and the theorem axNAME that proves an axiom ax-NAME."
@@ -54,7 +55,7 @@ translation, added to a copy of the environment that is not kept."
 (*Function Definitions*)
 
 
-Options[MetamathToTypeTheory] = {"Semantics" -> Automatic, "Through" -> All, "Cone" -> None, "UnprovedAxioms" -> "Fail", Method -> "Core"}
+Options[MetamathToTypeTheory] = {"Semantics" -> Automatic, "Through" -> All, "Cone" -> None, "UnprovedAxioms" -> "Fail", Method -> "Core", "BatchSize" -> Automatic}
 
 MetamathToTypeTheory[File[path_String], options : OptionsPattern[]] := MetamathToTypeTheory[metamathDatabase[File[path]], options]
 
@@ -68,23 +69,53 @@ MetamathToTypeTheory[database_Association /; KeyExistsQ[database, "Grammar"], op
 			targets : (_String | {__String}) :> metamathCone[database, Flatten[{targets}]]
 		}]
 	},
-	Block[{$declarationMethod = OptionValue[Method], $declarationSemantics = semantics},
-		First[Fold[
-			addStatement,
-			{semantics["Environment"], Append[translationContext[database, semantics], "UnprovedAxioms" -> OptionValue["UnprovedAxioms"]]},
-			labels
-		]]
+	Block[{$declarationMethod = OptionValue[Method], $batchSize = Replace[OptionValue["BatchSize"], Automatic -> 1000]},
+		Block[{$declarationSemantics = semantics},
+			First[flushed[Fold[
+				addStatement,
+				{semantics["Environment"], Append[translationContext[database, semantics], "UnprovedAxioms" -> OptionValue["UnprovedAxioms"]], {}},
+				labels
+			]]]
+		]
 	]
 ]
 
-addStatement[{failure_Failure, context_}, _] := {failure, context}
-addStatement[{environment_, context_}, label_String] := Replace[reapVariants[metamathDeclarations[context, label]], {
+(* The state of an import: the environment, the context of the translation, and the declarations translated but not yet
+   added, each with its label. They are added in batches, checked by TypeTheory's compiled kernel where it has one,
+   before a check of a constant of the environment, and at the end. *)
+addStatement[{failure_Failure, context_, pending_}, _] := {failure, context, pending}
+addStatement[{environment_, context_, pending_List}, label_String] := Replace[reapVariants[metamathDeclarations[context, label]], {
 	{{declarations_List, next_Association}, variants_List} :> Replace[Fold[addVariant, {{}, next}, variants], {
-		{variantDeclarations_List, final_Association} :> {Fold[addDeclaration[label], environment, Join[variantDeclarations, declarations]], final},
-		failure_Failure :> {Failure[failure[[1]], Append[failure[[2]], "Label" -> label]], context}
+		{variantDeclarations_List, final_Association} :> Fold[enqueued[label], {environment, final, pending}, Join[variantDeclarations, declarations]],
+		failure_Failure :> {relabeled[failure, label], context, pending}
 	}],
-	{failure_Failure, _} :> {Failure[failure[[1]], Append[failure[[2]], "Label" -> label]], context}
+	{failure_Failure, _} :> {relabeled[failure, label], context, pending}
 }]
+
+relabeled[Failure[tag_, data_Association], label_String] := Failure[tag, Append[data, "Label" -> label]]
+relabeled[failure_, _] := failure
+
+(* a check of a constant of the environment waits for what comes before it *)
+enqueued[label_][{failure_Failure, context_, pending_}, _] := {failure, context, pending}
+enqueued[label_][state_List, check_libraryCheck] := Replace[flushed[state], {
+	{environment_, context_, {}} :> {addDeclaration[label][environment, check], context, {}},
+	other_ :> other
+}]
+enqueued[label_][{environment_, context_, pending_List}, declaration_] := With[{queue = Append[pending, {label, declaration}]},
+	If[Length[queue] >= $batchSize, flushed[{environment, context, queue}], {environment, context, queue}]
+]
+
+(* the declarations waiting, added at once with the compiled kernel's check, which TypeTheory replaces by its own where
+   it has no compiled kernel; where the batch fails, it is added again one declaration at a time, so that the failure is
+   the first declaration's that does not check, with its label *)
+flushed[{failure_Failure, context_, pending_}] := {failure, context, pending}
+flushed[{environment_, context_, {}}] := {environment, context, {}}
+flushed[{environment_, context_, pending_List}] := Replace[TypeTheoryEnvironment[environment, Map[Last, pending], Method -> "Compiled"], {
+	_Failure :> {Fold[Function[{current, entry}, addDeclaration[First[entry]][current, Last[entry]]], environment, pending], context, {}},
+	extended_ :> {extended, context, {}}
+}]
+
+$batchSize = 1000
 
 SetAttributes[reapVariants, HoldFirst]
 reapVariants[expression_] := Replace[Reap[expression, "variant"], {{value_, {}} :> {value, {}}, {value_, {variants_List}} :> {value, DeleteDuplicates[variants]}}]

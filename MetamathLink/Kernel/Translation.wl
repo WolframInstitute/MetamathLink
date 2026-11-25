@@ -150,7 +150,17 @@ binderTypecodeQ[context_, typecode_String] := MemberQ[context["Semantics"]["Bind
 
 disjointQ[pairs_List, a_String, b_String] := MemberQ[pairs, {a, b} | {b, a}]
 
-frameOf[context_Association, label_String] := With[{statement = statementOf[context, label]},
+(* the frame of a database's assertion is computed once for the database and the semantics; a variant's every time *)
+frameOf[context_Association, label_String] := If[ KeyExistsQ[Lookup[context, "VariantStatements", <||>], label],
+	computedFrame[context, label],
+	(* memoized as down values: an association assigned inside a Lookup of it is copied at every new key *)
+	Replace[
+		cachedFrame[context["Database"]["Identifier"], context["Semantics"]["Name"], label],
+		_cachedFrame :> (cachedFrame[context["Database"]["Identifier"], context["Semantics"]["Name"], label] = computedFrame[context, label])
+	]
+]
+
+computedFrame[context_Association, label_String] := With[{statement = statementOf[context, label]},
 	With[
 		{
 			setvars = Cases[statement["Floating"], {_, typecode_, variable_} /; binderTypecodeQ[context, typecode] :> variable],

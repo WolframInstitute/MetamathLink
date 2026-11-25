@@ -69,9 +69,16 @@ A database can be saved as WXF and imported with no network, `MetamathToTypeTheo
 TYPETHEORY_PACLET=/path/to/TypeTheory/TypeTheory wolframscript -f scripts/import_setmm.wls set.mm 2p2e4 --out 2p2e4.tte
 ```
 
-imports the cone of `2p2e4`, 3496 statements of set.mm down to the construction of the complex numbers, in about three
-minutes and 0.5 GB: 3893 constants, no axiom beyond the prelude's, `2p2e4`'s closure the prelude's propositional
-extensionality, choice and quotient soundness, and `TypeTheoryCheck` checks every constant again (50 s).
+imports the cone of `2p2e4`, 3496 statements of set.mm down to the construction of the complex numbers, in 55 s with
+TypeTheory's compiled kernel: 3893 constants, no axiom beyond the prelude's, `2p2e4`'s closure the prelude's propositional
+extensionality, choice and quotient soundness, and `TypeTheoryCheck` checks every constant again (4 s).
+
+| `2p2e4`'s cone, 3518 declarations | time |
+|---|---|
+| translation (Metamath's checks included) | 13 s |
+| TypeTheory's kernel in Wolfram Language, one at a time | 51 s |
+| TypeTheory's compiled kernel, in batches | 7.5 s |
+| metamath-knife verifying all of set.mm, one thread | 0.86 s |
 
 ## Tests
 

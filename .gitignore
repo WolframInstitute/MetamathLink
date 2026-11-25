@@ -1,3 +1,15 @@
 .DS_Store
+*.mx
+*.tmp
+*~
+
+# Built documentation and archives
+*.nb
+*.paclet
+MetamathLink/Documentation/
+MetamathLink/build/
+build/
+
+# Databases are saved as WXF by MetamathLink; only those in Data travel with the paclet
 *.wxf
 !MetamathLink/Data/*.wxf
