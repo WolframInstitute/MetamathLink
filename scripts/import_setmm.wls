@@ -10,7 +10,8 @@
    The import is strict: an axiom the ZFC semantics does not prove stops it. It prints the time, the constants, the
    axioms beyond the prelude's (none, when the import succeeds), each label's statement and axiom closure, checks the
    whole environment again with TypeTheoryCheck, and with --out exports it in Format 3. Run it under a memory cap:
-   2p2e4's cone, 3496 statements, takes about a minute and 1.3 GB with TypeTheory's compiled kernel. *)
+   2p2e4's cone, 3403 statements, takes 40 s with TypeTheory's compiled kernel, and 1 GB from the saved
+   Data/setmm-2p2e4.wxf, about 2 GB from all of set.mm, which the kernel then holds whole. *)
 
 repositoryRoot = ParentDirectory[DirectoryName[$InputFileName]]
 
