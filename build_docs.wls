@@ -5,7 +5,9 @@
 
        TYPETHEORY_PACLET=/path/to/TypeTheory/TypeTheory wolframscript -f build_docs.wls [--no-cache]
 
-   The pages need TypeTheory's ZFC environment; two import 2 + 2 = 4 from set.mm, about 40 s and 1 GB each. *)
+   The pages need TypeTheory's ZFC environment; two import 2 + 2 = 4 from set.mm, about 40 s and 1 GB each. The cache
+   keys a page on its source and the Wolfram Language code, not on MetamathLink's library: after the library changes,
+   build with --no-cache. *)
 
 Get[FileNameJoin[{DirectoryName[$InputFileName], "pacletpage.wl"}]]
 
