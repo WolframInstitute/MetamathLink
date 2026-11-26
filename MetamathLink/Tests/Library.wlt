@@ -11,8 +11,8 @@ data = FileNameJoin[{Directory[], "MetamathLink", "Data"}]
 
 
 VerificationTest[
-	Keys[WolframInstitute`MetamathLink`PackageScope`libraryFunctions[]],
-	{"metamath_database"},
+	Sort[Keys[WolframInstitute`MetamathLink`PackageScope`libraryFunctions[]]],
+	{"metamath_database", "metamath_verify"},
 	TestID -> "library-loads"
 ]
 

@@ -29,15 +29,40 @@ const DIAGNOSTICS_SHOWN: usize = 10;
 
 /// The result of reading a database: the database itself, or a `Failure`.
 #[derive(ToWXF)]
-#[wolfram(enum_head = "System`Failure", key_processor = "CamelCase")]
+#[wolfram(enum_head = "System`Failure")]
 pub enum Reading {
     #[wolfram(enum_head = false)]
     Database(MetamathDatabase),
-    InvalidDatabase {
-        message_template: String,
-        message_parameters: Vec<String>,
-        diagnostics: Vec<String>,
-    },
+    InvalidDatabase(Diagnostics),
+}
+
+/// The result of verifying a database: `Success["Verified", <|...|>]` with what it has, or a `Failure`.
+#[derive(ToWXF)]
+#[wolfram(enum_head = "System`Failure")]
+pub enum Verification {
+    #[wolfram(enum_head = "System`Success")]
+    Verified(Counts),
+    InvalidDatabase(Diagnostics),
+}
+
+/// Why a database is refused: how many errors the verifier found, and the first of them as text.
+#[derive(ToWXF)]
+#[wolfram(key_processor = "CamelCase")]
+pub struct Diagnostics {
+    message_template: String,
+    message_parameters: Vec<String>,
+    diagnostics: Vec<String>,
+}
+
+/// What a database that verifies has.
+#[derive(ToWXF)]
+#[wolfram(key_processor = "CamelCase")]
+pub struct Counts {
+    message_template: String,
+    message_parameters: Vec<String>,
+    axioms: i64,
+    theorems: i64,
+    hypotheses: i64,
 }
 
 #[derive(ToWXF)]
@@ -110,17 +135,8 @@ pub struct EssentialHypothesis {
 /// the grammar of its syntax axioms parses. A statement it does not parse has no tree here: MetamathLink parses it.
 pub fn read(path: &str) -> Reading {
     let mut database = verified(path, Vec::new());
-    let diagnostics = database.diag_notations();
-    if !diagnostics.is_empty() {
-        let renderer = Renderer::plain();
-        let count = diagnostics.len();
-        let shown =
-            database.render_diags(diagnostics, |message| renderer.render(message).to_string());
-        return Reading::InvalidDatabase {
-            message_template: "The database `1` does not verify: `2` errors.".to_string(),
-            message_parameters: vec![path.to_string(), count.to_string()],
-            diagnostics: shown.into_iter().take(DIAGNOSTICS_SHOWN).collect(),
-        };
+    if let Some(diagnostics) = diagnostics_of(&database, path) {
+        return Reading::InvalidDatabase(diagnostics);
     }
     if database.grammar_pass().provable_typecode() == TypeCode::default() {
         if let Some(declared) = syntax_declaration(&database, path) {
@@ -130,6 +146,47 @@ pub fn read(path: &str) -> Reading {
     }
     database.stmt_parse_pass();
     Reading::Database(converted(&database))
+}
+
+/// Verifies the database in the file `path`, as metamath-knife does, and counts its statements.
+pub fn verify(path: &str) -> Verification {
+    let database = verified(path, Vec::new());
+    if let Some(diagnostics) = diagnostics_of(&database, path) {
+        return Verification::InvalidDatabase(diagnostics);
+    }
+    let count = |kinds: &[StatementType]| {
+        database
+            .statements()
+            .filter(|statement| kinds.contains(&statement.statement_type()))
+            .count() as i64
+    };
+    let (axioms, theorems) = (
+        count(&[StatementType::Axiom]),
+        count(&[StatementType::Provable]),
+    );
+    Verification::Verified(Counts {
+        message_template: "`1` verifies: `2` theorems from `3` axioms.".to_string(),
+        message_parameters: vec![path.to_string(), theorems.to_string(), axioms.to_string()],
+        axioms,
+        theorems,
+        hypotheses: count(&[StatementType::Floating, StatementType::Essential]),
+    })
+}
+
+/// The diagnostics of reading, scoping and verifying a database, if it has any.
+fn diagnostics_of(database: &Database, path: &str) -> Option<Diagnostics> {
+    let diagnostics = database.diag_notations();
+    if diagnostics.is_empty() {
+        return None;
+    }
+    let renderer = Renderer::plain();
+    let count = diagnostics.len();
+    let shown = database.render_diags(diagnostics, |message| renderer.render(message).to_string());
+    Some(Diagnostics {
+        message_template: "The database `1` does not verify: `2` errors.".to_string(),
+        message_parameters: vec![path.to_string(), count.to_string()],
+        diagnostics: shown.into_iter().take(DIAGNOSTICS_SHOWN).collect(),
+    })
 }
 
 /// The database parsed from `path`, or from the contents `text` gives for it, and verified.
@@ -352,8 +409,8 @@ mod tests {
     fn demo0() -> MetamathDatabase {
         match read(DEMO0) {
             Reading::Database(database) => database,
-            Reading::InvalidDatabase { diagnostics, .. } => {
-                panic!("demo0 does not verify: {diagnostics:?}")
+            Reading::InvalidDatabase(failure) => {
+                panic!("demo0 does not verify: {:?}", failure.diagnostics)
             }
         }
     }
@@ -396,6 +453,16 @@ mod tests {
     }
 
     #[test]
+    fn demo0_verifies() {
+        match verify(DEMO0) {
+            Verification::Verified(counts) => {
+                assert_eq!((counts.axioms, counts.theorems), (7, 1))
+            }
+            Verification::InvalidDatabase(failure) => panic!("{:?}", failure.diagnostics),
+        }
+    }
+
+    #[test]
     fn a_proof_that_does_not_verify_fails() {
         let path = std::env::temp_dir().join("metamath-link-broken-demo0.mm");
         std::fs::write(
@@ -406,7 +473,7 @@ mod tests {
         )
         .unwrap();
         match read(path.to_str().unwrap()) {
-            Reading::InvalidDatabase { diagnostics, .. } => assert!(!diagnostics.is_empty()),
+            Reading::InvalidDatabase(failure) => assert!(!failure.diagnostics.is_empty()),
             Reading::Database(_) => panic!("a broken proof verified"),
         }
     }
@@ -430,7 +497,7 @@ mod tests {
                 database.trees.len(),
                 bytes.len() / 1_000_000
             ),
-            Reading::InvalidDatabase { diagnostics, .. } => panic!("{diagnostics:?}"),
+            Reading::InvalidDatabase(failure) => panic!("{:?}", failure.diagnostics),
         }
     }
 }
