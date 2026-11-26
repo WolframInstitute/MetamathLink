@@ -75,10 +75,12 @@ parser looks ahead, is parsed by MetamathLink's own parser; without a library fo
 `ResourceFunction["MetamathImport"]`.
 
 ```bash
-sh scripts/build_library.sh      # cargo test, then cargo wl build: MetamathLink/Binaries/metamath_link-<SystemID>/
+sh scripts/build_library.sh         # cargo test, then cargo wl build: MetamathLink/Binaries/metamath_link-<SystemID>/
+sh scripts/build_library.sh --all   # the five platforms a release carries, cross-compiled from a Mac
 ```
 
-It needs Rust and `cargo-wl` (`cargo install cargo-wl`), which writes the library's loader, `Functions.wl`.
+It needs Rust and `cargo-wl` (`cargo install cargo-wl`), which writes the library's loader, `Functions.wl`; `--all` needs
+the Rust targets of the platforms and the linkers `.cargo/config.toml` names.
 
 ## set.mm through 2p2e4
 
