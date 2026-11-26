@@ -5,7 +5,7 @@ Context: WolframInstitute`MetamathLink`
 Paclet: WolframInstitute/MetamathLink
 URI: WolframInstitute/MetamathLink/ref/MetamathImport
 Keywords: [Metamath, set.mm, import, read, verify, parse, database, demo0, metamath-knife]
-SeeAlso: [MetamathDatabase, MetamathVerify, MetamathToTypeTheory]
+SeeAlso: [MetamathDatabase, MetamathVerify, MetamathToTypeTheory, ResourceFunction]
 RelatedGuides: [MetamathLink]
 RelatedTutorials: [MetamathInTypeTheory]
 ---
@@ -16,15 +16,14 @@ RelatedTutorials: [MetamathInTypeTheory]
 
 <code>[MetamathImport]()[[File]()["*database*.wxf"]]</code> reads a database MetamathLink saved.
 
-<code>[MetamathImport]()[*object*]</code> reads the MetamathObject that the function resource MetamathImport gives.
+<code>[MetamathImport]()[*object*]</code> reads the MetamathObject that [MetamathImport](https://resources.wolframcloud.com/FunctionRepository/resources/MetamathImport) of the Wolfram Function Repository gives.
 
 ## Details & Options
 
 - MetamathLink's library is a Rust library on metamath-rs, the library of metamath-knife, the fastest Metamath verifier: it reads the database, verifies every proof, and parses every statement with the grammar of the database's syntax axioms. All of set.mm is read, verified and parsed in about 2 s.
 - A statement the library's grammar does not parse, as in a database whose grammar is ambiguous where its parser looks ahead, is parsed by MetamathLink's own parser when its parse tree is asked for.
 - A database that does not verify gives `Failure["InvalidDatabase", ...]`, with the verifier's diagnostics under `"Diagnostics"`.
-- On a platform for which MetamathLink has no library, the file is read by the function resource MetamathImport, which needs the network, and is not verified.
-- MetamathImport of MetamathLink is not the function resource of the same name, which gives a MetamathObject; MetamathImport takes one.
+- [MetamathImport](https://resources.wolframcloud.com/FunctionRepository/resources/MetamathImport) of the Wolfram Function Repository reads a database into a MetamathObject, its statements, proofs and comments. MetamathImport takes a MetamathObject, and on a platform for which MetamathLink has no library it reads a file with it, which needs the network.
 
 ## Basic Examples
 
@@ -85,6 +84,30 @@ arithmetic["2p2e4", "ParseTree"]
 ```
 
 <!-- => Tree["wceq", {Tree["co", {Tree["c2", {}], Tree["c2", {}], Tree["caddc", {}]}], Tree["c4", {}]}] -->
+
+## Properties & Relations
+
+[MetamathImport](https://resources.wolframcloud.com/FunctionRepository/resources/MetamathImport) of the Wolfram Function Repository reads demo0 into a MetamathObject:
+
+```wl
+object = ResourceFunction["MetamathImport"][File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "demo0.mm"}]]]
+```
+
+<!-- => MetamathObject summary box -->
+
+MetamathImport takes it; the database is the one MetamathImport reads from the file:
+
+```wl
+database = MetamathImport[object]
+```
+
+<!-- => MetamathDatabase summary box: Theorems: 1, Axioms: 7 -->
+
+```wl
+Normal[database] === Normal[MetamathImport[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "demo0.mm"}]]]]
+```
+
+<!-- => True -->
 
 ## Possible Issues
 

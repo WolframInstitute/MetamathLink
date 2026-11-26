@@ -5,7 +5,7 @@ Context: WolframInstitute`MetamathLink`
 Paclet: WolframInstitute/MetamathLink
 URI: WolframInstitute/MetamathLink/ref/MetamathToTypeTheory
 Keywords: [Metamath, set.mm, import, translation, proof checking, ZFC, demo0, axiom closure]
-SeeAlso: [MetamathImport, MetamathDatabase, MetamathVerify, TypeTheoryEnvironment, TypeTheoryAxiomClosure, TypeTheoryCheck, TypeTheoryType]
+SeeAlso: [MetamathImport, MetamathDatabase, MetamathVerify, ResourceFunction, TypeTheoryEnvironment, TypeTheoryAxiomClosure, TypeTheoryCheck, TypeTheoryType]
 RelatedGuides: [MetamathLink]
 RelatedTutorials: [MetamathInTypeTheory]
 ---
@@ -14,7 +14,7 @@ RelatedTutorials: [MetamathInTypeTheory]
 
 <code>[MetamathToTypeTheory]()[[File]()[*path*]]</code> imports the Metamath database in the file *path* into a [TypeTheoryEnvironment](), every proof checked again by TypeTheory's kernel.
 
-<code>[MetamathToTypeTheory]()[*object*]</code> imports the MetamathObject that the function resource MetamathImport gives.
+<code>[MetamathToTypeTheory]()[*object*]</code> imports the MetamathObject that [MetamathImport](https://resources.wolframcloud.com/FunctionRepository/resources/MetamathImport) of the Wolfram Function Repository gives.
 
 <code>[MetamathToTypeTheory]()[[File]()["*database*.wxf"]]</code> imports a database MetamathLink saved, with no network.
 
@@ -132,6 +132,22 @@ MetamathToTypeTheory[MetamathImport[File[FileNameJoin[{PacletObject["WolframInst
 ```
 
 <!-- => TypeTheoryEnvironment summary box: 284 constants -->
+
+## Properties & Relations
+
+The MetamathObject of [MetamathImport](https://resources.wolframcloud.com/FunctionRepository/resources/MetamathImport) of the Wolfram Function Repository imports as the file does:
+
+```wl
+object = ResourceFunction["MetamathImport"][File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "demo0.mm"}]]]
+```
+
+<!-- => MetamathObject summary box -->
+
+```wl
+Information[MetamathToTypeTheory[object], "Constants"] === Information[MetamathToTypeTheory[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "demo0.mm"}]]], "Constants"]
+```
+
+<!-- => True -->
 
 ## Possible Issues
 

@@ -1,9 +1,11 @@
 # MetamathLink
 
 Metamath databases in [TypeTheory](https://github.com/WolframInstitute/TypeTheory), a proof engine for the Calculus of
-Inductive Constructions in pure Wolfram Language. `MetamathToTypeTheory` reads a database with
-`ResourceFunction["MetamathImport"]`, translates each statement into a statement of type theory and each proof into a proof
-term, and TypeTheory's kernel checks every one again: Metamath's checker is not trusted, nor is this translation.
+Inductive Constructions in pure Wolfram Language. `MetamathImport` reads a database with MetamathLink's Rust library,
+verifying every proof and parsing every statement; `MetamathToTypeTheory` translates each statement into a statement of type
+theory and each proof into a proof term, and TypeTheory's kernel checks every one again: Metamath's checker is not
+trusted, nor is this translation. Both also take the MetamathObject of
+[`MetamathImport`](https://resources.wolframcloud.com/FunctionRepository/resources/MetamathImport) of the Wolfram Function Repository.
 
 ```wl
 PacletDirectoryLoad["MetamathLink"]
@@ -78,7 +80,7 @@ the database's syntax axioms, and gives the kernel the database as typed WXF thr
 [wolfram-export](https://github.com/WolframResearch/wolfram-rust-library). All of set.mm, 121,324 statements, is read,
 verified and parsed in 2 s. A statement its grammar does not parse, as in demo0, whose grammar is ambiguous where the
 parser looks ahead, is parsed by MetamathLink's own parser; without a library for the platform, a `.mm` file is read by
-`ResourceFunction["MetamathImport"]`.
+[`ResourceFunction["MetamathImport"]`](https://resources.wolframcloud.com/FunctionRepository/resources/MetamathImport).
 
 ```bash
 sh scripts/build_library.sh         # cargo test, then cargo wl build: MetamathLink/Binaries/metamath_link-<SystemID>/

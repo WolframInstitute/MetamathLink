@@ -14,4 +14,6 @@ What is particular to MetamathLink:
   no download of set.mm: `demo0.mm`, set.mm's propositional calculus `setmm-propositional.mm`, and `setmm-2p2e4.wxf`, the
   statements of set.mm that 2p2e4 needs.
 - TypeTheory's terms display as TypeTheory shows them: an environment as its summary box, a statement as a term.
+- [MetamathImport](https://resources.wolframcloud.com/FunctionRepository/resources/MetamathImport) of the Wolfram Function Repository, whose MetamathObject MetamathLink takes, is linked
+  wherever a page names it, and the pages of the symbols that take its object show how in Properties & Relations.
 - The tutorial runs in one context; every other page runs each section, and each example between `---`, in a clean one.

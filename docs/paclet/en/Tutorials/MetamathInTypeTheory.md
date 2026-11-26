@@ -21,7 +21,7 @@ data = FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], 
 
 ## A Database of Its Own Axioms
 
-demo0 declares terms and formulas of its own, two axioms about equality and addition, and modus ponens. [MetamathImport]() reads it, MetamathLink's library verifying every proof as Metamath's verifiers do:
+demo0 declares terms and formulas of its own, two axioms about equality and addition, and modus ponens. [MetamathImport]() reads it, MetamathLink's library verifying every proof as Metamath's verifiers do; it takes as well the MetamathObject that [MetamathImport](https://resources.wolframcloud.com/FunctionRepository/resources/MetamathImport) of the Wolfram Function Repository gives:
 
 ```wl
 database = MetamathImport[File[FileNameJoin[{data, "demo0.mm"}]]]

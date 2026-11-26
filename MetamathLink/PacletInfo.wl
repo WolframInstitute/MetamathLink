@@ -3,7 +3,7 @@
 PacletObject[<|
 	"Name" -> "WolframInstitute/MetamathLink",
 	"PublisherID" -> "WolframInstitute",
-	"Version" -> "0.2.0",
+	"Version" -> "0.2.1",
 	"WolframVersion" -> "15.0+",
 	"Description" -> "Metamath databases in the TypeTheory proof engine: set.mm's theorems as theorems about the sets of a model of ZFC",
 	"Creator" -> "Nikolay Murzin",
