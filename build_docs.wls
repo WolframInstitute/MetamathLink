@@ -5,7 +5,7 @@
 
        TYPETHEORY_PACLET=/path/to/TypeTheory/TypeTheory wolframscript -f build_docs.wls [--no-cache]
 
-   The pages need TypeTheory's ZFC environment; the tutorial imports 2 + 2 = 4 from set.mm, a few minutes and 0.5 GB. *)
+   The pages need TypeTheory's ZFC environment; two import 2 + 2 = 4 from set.mm, about 40 s and 1 GB each. *)
 
 Get[FileNameJoin[{DirectoryName[$InputFileName], "pacletpage.wl"}]]
 
