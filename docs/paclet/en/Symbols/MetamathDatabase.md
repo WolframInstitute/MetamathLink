@@ -20,14 +20,14 @@ RelatedTutorials: [MetamathInTypeTheory]
 
 <code>*database*[*label*, "Proof"]</code> gives the proof of the theorem *label* as Metamath's normal proof.
 
-<code>*database*[{*label1*, *label2*, ...}, "Cone"]</code> gives the statements the assertions *labeli* need, in the order of the database.
+<code>*database*[{*label1*, *label2*, ...}, "Cone"]</code> gives the assertions that the assertions *labeli* need, themselves included, in the order of the database.
 
 ## Details & Options
 
 - A statement is an association: its `"Kind"`, `"Axiom"`, `"Theorem"`, `"Floating"` or `"Essential"`; its `"Label"`, `"Typecode"` and `"Symbols"`; for an assertion its mandatory floating hypotheses `{label, typecode, variable}`, essential hypotheses and disjoint variables `{variable, variable}`, and for a theorem its proof as the file has it.
 - A parse tree has a syntax axiom at each node, over its arguments in the order of the axiom's floating hypotheses, and a variable at each leaf.
 - Metamath's normal proof is the labels of the proof in order, each applying the statement it names to the steps before it: a step a compressed proof saves and uses again is written out again.
-- The cone of some assertions is what their import into TypeTheory takes: the assertions their proofs apply, the syntax of every statement with the axiom that defines it, and for an axiom ax-NAME an earlier theorem axNAME that proves it.
+- The cone of some assertions is what their import into TypeTheory takes: the assertions their proofs apply, the syntax axioms of every statement with the axiom that defines each, and for an axiom ax-NAME an earlier theorem axNAME that proves it. Their hypotheses come with them.
 - [Information]()`[`*database*`, `*property*`]` gives these properties:
 
 | property | |
@@ -41,6 +41,14 @@ RelatedTutorials: [MetamathInTypeTheory]
 - [Keys]() gives every label in the order of the database, [Length]() their number, and [Normal]() the statements by label.
 
 ## Basic Examples
+
+MetamathLink's functions give environments of TypeTheory, whose functions take them:
+
+```wl
+Needs["WolframInstitute`TypeTheory`"]
+```
+
+demo0, the example database of the Metamath book:
 
 ```wl
 demo = MetamathImport[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "demo0.mm"}]]]
@@ -70,7 +78,7 @@ What its import takes:
 demo["th1", "Cone"]
 ```
 
-<!-- => {"tt", "tr", "ts", "wp", "wq", "tze", "tpl", "weq", "wim", "a1", "a2", "mp", "th1"}: syntax, axioms and th1 -->
+<!-- => {"tze", "tpl", "weq", "wim", "a1", "a2", "mp", "th1"} -->
 
 ## Scope
 
@@ -88,7 +96,7 @@ Its statements and theorems:
 {Length[propositional], Length[Information[propositional, "Theorems"]]}
 ```
 
-<!-- => {3223, ...} -->
+<!-- => {3223, 1790} -->
 
 The parse tree of pm2.43, (φ → (φ → ψ)) → (φ → ψ):
 
@@ -96,7 +104,7 @@ The parse tree of pm2.43, (φ → (φ → ψ)) → (φ → ψ):
 propositional["pm2.43", "ParseTree"]
 ```
 
-<!-- => Tree["wi", {Tree["wi", {Tree["ph", None], Tree["wi", {...}]}], Tree["wi", {...}]}] -->
+<!-- => Tree["wi", {Tree["wi", {Tree["ph", None], Tree["wi", {Tree["ph", None], Tree["ps", None]}]}], Tree["wi", {Tree["ph", None], Tree["ps", None]}]}] -->
 
 Its compressed proof, written out as a normal proof:
 
@@ -104,31 +112,33 @@ Its compressed proof, written out as a normal proof:
 propositional["pm2.43", "Proof"]
 ```
 
-<!-- => {"wph", "wps", ...}: ending in its last step -->
+<!-- => {"wph", "wph", "wps", "wi", "wps", "wph", "wps", "pm2.27", "a2i"} -->
 
 ## Properties & Relations
 
-The labels of the database are its keys, and its statements its values:
+The labels of a database are its keys, in the order of the database:
 
 ```wl
-Take[Keys[propositional], 5]
+demo = MetamathImport[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "demo0.mm"}]]];
+Keys[demo]
 ```
 
-<!-- => {"wph", "wps", "wch", "wth", "wta"} -->
+<!-- => {"tt", "tr", "ts", "wp", "wq", "tze", "tpl", "weq", "wim", "a1", "a2", "min", "maj", "mp", "th1"} -->
 
-[MetamathToTypeTheory]() imports the cone of a label:
+[MetamathToTypeTheory]() imports what a label needs:
 
 ```wl
 MetamathToTypeTheory[demo, "th1"]
 ```
 
-<!-- => TypeTheoryEnvironment summary box -->
+<!-- => TypeTheoryEnvironment summary box: 284 constants -->
 
 ## Possible Issues
 
 An axiom has no proof:
 
 ```wl
+demo = MetamathImport[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "demo0.mm"}]]];
 demo["a1", "Proof"]
 ```
 

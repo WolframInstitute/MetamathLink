@@ -60,7 +60,7 @@ set.mm's propositional calculus:
 propositional = MetamathImport[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "setmm-propositional.mm"}]]]
 ```
 
-<!-- => MetamathDatabase summary box -->
+<!-- => MetamathDatabase summary box: Theorems: 1790, Axioms: 40 -->
 
 Its typecodes, in the order the database declares them:
 
@@ -78,13 +78,13 @@ A database MetamathLink saved, the statements of set.mm that 2 + 2 = 4 needs, wi
 arithmetic = MetamathImport[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "setmm-2p2e4.wxf"}]]]
 ```
 
-<!-- => MetamathDatabase summary box -->
+<!-- => MetamathDatabase summary box: Theorems: 3136, Axioms: 267 -->
 
 ```wl
 arithmetic["2p2e4", "ParseTree"]
 ```
 
-<!-- => Tree["wceq", {Tree["co", {...}], Tree["c4", {}]}] -->
+<!-- => Tree["wceq", {Tree["co", {Tree["c2", {}], Tree["c2", {}], Tree["caddc", {}]}], Tree["c4", {}]}] -->
 
 ## Possible Issues
 
@@ -96,4 +96,4 @@ Export[broken, StringReplace[ReadString[FileNameJoin[{PacletObject["WolframInsti
 MetamathImport[File[broken]]
 ```
 
-<!-- => Failure["InvalidDatabase", ...]: does not verify, 1 error -->
+<!-- => Failure["InvalidDatabase", ...]: The database .../broken-demo0.mm does not verify: 1 error. -->

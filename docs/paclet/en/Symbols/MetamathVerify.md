@@ -31,7 +31,7 @@ demo0, the example database of the Metamath book:
 MetamathVerify[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "demo0.mm"}]]]
 ```
 
-<!-- => Success["Verified", ...]: demo0.mm verifies: 1 theorems from 7 axioms -->
+<!-- => Success["Verified", ...]: .../demo0.mm verifies: 1 theorem from 7 axioms. -->
 
 ## Scope
 
@@ -41,7 +41,7 @@ set.mm's propositional calculus, and the number of its theorems:
 MetamathVerify[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "setmm-propositional.mm"}]]]["Theorems"]
 ```
 
-<!-- => the number of its theorems -->
+<!-- => 1790 -->
 
 ---
 
@@ -63,10 +63,10 @@ Export[broken, StringReplace[ReadString[FileNameJoin[{PacletObject["WolframInsti
 MetamathVerify[File[broken]]
 ```
 
-<!-- => Failure["InvalidDatabase", ...] -->
+<!-- => Failure["InvalidDatabase", ...]: The database .../broken-demo0.mm does not verify: 1 error. -->
 
 ```wl
 MetamathVerify[File[broken]]["Diagnostics"]
 ```
 
-<!-- => {"error: ... th1 ..."} -->
+<!-- => {"error: Proven statement does not match assertion, at .../broken-demo0.mm:26:5, th1 $p |- t = r ... Final step statement does not match assertion"} -->

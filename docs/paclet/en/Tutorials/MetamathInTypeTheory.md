@@ -154,4 +154,4 @@ The environment can be saved in TypeTheory's Format 3, which reads its declarati
 Export[FileNameJoin[{$TemporaryDirectory, "2p2e4.tte"}], arithmetic]
 ```
 
-<!-- => File[".../2p2e4.tte"] -->
+<!-- => ".../2p2e4.tte" -->

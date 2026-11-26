@@ -165,8 +165,12 @@ pub fn verify(path: &str) -> Verification {
         count(&[StatementType::Provable]),
     );
     Verification::Verified(Counts {
-        message_template: "`1` verifies: `2` theorems from `3` axioms.".to_string(),
-        message_parameters: vec![path.to_string(), theorems.to_string(), axioms.to_string()],
+        message_template: "`1` verifies: `2` from `3`.".to_string(),
+        message_parameters: vec![
+            path.to_string(),
+            counted(theorems as usize, "theorem"),
+            counted(axioms as usize, "axiom"),
+        ],
         axioms,
         theorems,
         hypotheses: count(&[StatementType::Floating, StatementType::Essential]),
@@ -183,8 +187,8 @@ fn diagnostics_of(database: &Database, path: &str) -> Option<Diagnostics> {
     let count = diagnostics.len();
     let shown = database.render_diags(diagnostics, |message| renderer.render(message).to_string());
     Some(Diagnostics {
-        message_template: "The database `1` does not verify: `2` errors.".to_string(),
-        message_parameters: vec![path.to_string(), count.to_string()],
+        message_template: "The database `1` does not verify: `2`.".to_string(),
+        message_parameters: vec![path.to_string(), counted(count, "error")],
         diagnostics: shown.into_iter().take(DIAGNOSTICS_SHOWN).collect(),
     })
 }
@@ -222,6 +226,15 @@ fn syntax_declaration(database: &Database, path: &str) -> Option<Vec<(String, Ve
         path.to_string(),
         [declaration.as_bytes(), &contents].concat(),
     )])
+}
+
+/// A number of things, with the noun in the singular for one.
+fn counted(count: usize, noun: &str) -> String {
+    if count == 1 {
+        format!("1 {noun}")
+    } else {
+        format!("{count} {noun}s")
+    }
 }
 
 fn text(token: &[u8]) -> String {
