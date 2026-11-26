@@ -5,7 +5,7 @@ Title: Metamath in TypeTheory
 Context: WolframInstitute`MetamathLink`
 Paclet: WolframInstitute/MetamathLink
 URI: WolframInstitute/MetamathLink/tutorial/MetamathInTypeTheory
-Keywords: [Metamath, set.mm, demo0, ZFC, higher-order abstract syntax, distinct variables, bundled theorems, variants, proof checking, axiom closure]
+Keywords: [Metamath, set.mm, demo0, MetamathImport, ZFC, higher-order abstract syntax, distinct variables, bundled theorems, variants, proof checking, axiom closure]
 RelatedGuides: [MetamathLink]
 ---
 
@@ -21,10 +21,26 @@ data = FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], 
 
 ## A Database of Its Own Axioms
 
-demo0 declares terms and formulas of its own, two axioms about equality and addition, and modus ponens:
+demo0 declares terms and formulas of its own, two axioms about equality and addition, and modus ponens. [MetamathImport]() reads it, MetamathLink's library verifying every proof as Metamath's verifiers do:
 
 ```wl
-demo = MetamathToTypeTheory[File[FileNameJoin[{data, "demo0.mm"}]]]
+database = MetamathImport[File[FileNameJoin[{data, "demo0.mm"}]]]
+```
+
+<!-- => MetamathDatabase summary box: Theorems: 1, Axioms: 7 -->
+
+Its theorem th1 says that t = t; its formula is a tree of the syntax axioms of demo0:
+
+```wl
+database["th1", "ParseTree"]
+```
+
+<!-- => Tree["weq", {Tree["t", None], Tree["t", None]}] -->
+
+[MetamathToTypeTheory]() reads the database as statements of type theory, and TypeTheory's kernel checks every proof again:
+
+```wl
+demo = MetamathToTypeTheory[database]
 ```
 
 <!-- => TypeTheoryEnvironment summary box: 284 constants -->

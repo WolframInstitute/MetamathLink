@@ -13,13 +13,19 @@ Links: ["[TypeTheory, the proof engine whose kernel checks every proof](https://
 
 ## Abstract
 
-<code>WolframInstitute\`MetamathLink\`</code> brings Metamath databases into TypeTheory, a proof engine for the Calculus of Inductive Constructions written in the Wolfram Language. A Metamath database is a list of axioms and theorems whose proofs are sequences of substitutions; [MetamathToTypeTheory]() translates each statement into a statement of type theory and each proof into a proof term, and TypeTheory's kernel checks every one again, so that neither Metamath's checker nor the translation is trusted. set.mm, Metamath's database of ZFC, goes into <code>[TypeTheoryEnvironment]()["ZFC"]</code>, a model of ZFC in which every axiom of set.mm is a theorem: its 2 + 2 = 4 rests on the prelude's three axioms alone.
+<code>WolframInstitute\`MetamathLink\`</code> brings Metamath databases into TypeTheory, a proof engine for the Calculus of Inductive Constructions written in the Wolfram Language. A Metamath database is a list of axioms and theorems whose proofs are sequences of substitutions; [MetamathImport]() reads one with MetamathLink's library, a Rust library on metamath-knife's, which verifies every proof and parses every statement, and [MetamathToTypeTheory]() translates each statement into a statement of type theory and each proof into a proof term, and TypeTheory's kernel checks every one again, so that neither Metamath's checker nor the translation is trusted. set.mm, Metamath's database of ZFC, goes into <code>[TypeTheoryEnvironment]()["ZFC"]</code>, a model of ZFC in which every axiom of set.mm is a theorem: its 2 + 2 = 4 rests on the prelude's three axioms alone.
 
 ## Functions
 
-### Importing databases
+### Metamath databases
 
-- [MetamathToTypeTheory]() imports a Metamath database into a [TypeTheoryEnvironment](), every proof checked by TypeTheory's kernel
+- [MetamathImport]() reads a database into a [MetamathDatabase](), every proof verified and every statement parsed by MetamathLink's library
+- [MetamathDatabase]() a database: its statements, parse trees, proofs and the cones of its theorems
+- [MetamathVerify]() verifies every proof of a database, as metamath-knife does
+
+### Into TypeTheory
+
+- [MetamathToTypeTheory]() imports a Metamath database, or what some of its theorems need, into a [TypeTheoryEnvironment](), every proof checked again by TypeTheory's kernel
 
 ### In TypeTheory
 

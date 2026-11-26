@@ -10,7 +10,12 @@ PacletDirectoryLoad["MetamathLink"]
 Needs["WolframInstitute`TypeTheory`"]
 Needs["WolframInstitute`MetamathLink`"]
 
-env = MetamathToTypeTheory[File["MetamathLink/Data/demo0.mm"]]
+database = MetamathImport[File["MetamathLink/Data/demo0.mm"]]   (* read, verified and parsed by the Rust library *)
+database["th1", "ParseTree"]                             (* Tree["weq", {Tree["t", None], Tree["t", None]}] *)
+database["th1", "Proof"]                                 (* Metamath's normal proof *)
+MetamathVerify[File["set.mm"]]                           (* Success["Verified", ...], all of set.mm in 1 s *)
+
+env = MetamathToTypeTheory[database, "th1"]              (* what th1 needs, every proof checked by TypeTheory *)
 TypeTheoryType[TypeTheoryTerm["th1", env]]               (* ∀ t : term, weq[t, t] *)
 TypeTheoryAxiomClosure[TypeTheoryTerm["th1", env]]       (* demo0's own axioms *)
 Export["demo0.tte", env]                                 (* TypeTheory's Format 3 *)
@@ -54,6 +59,7 @@ Declarations reach TypeTheory's kernel as core terms, its own locally nameless f
 
 | file | |
 |---|---|
+| `Kernel/Objects.wl` | `MetamathImport`, `MetamathDatabase`, `MetamathVerify` |
 | `Kernel/Library.wl` | MetamathLink's library, the Rust crate in `Libs/metamath_link` |
 | `Kernel/Database.wl` | the statements of a database, the grammar of the syntax axioms and the parser, compressed proofs |
 | `Kernel/Translation.wl` | frames, statements and proof terms, definitions, variants |

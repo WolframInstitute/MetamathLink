@@ -5,7 +5,7 @@ Context: WolframInstitute`MetamathLink`
 Paclet: WolframInstitute/MetamathLink
 URI: WolframInstitute/MetamathLink/ref/MetamathToTypeTheory
 Keywords: [Metamath, set.mm, import, translation, proof checking, ZFC, demo0, axiom closure]
-SeeAlso: [TypeTheoryEnvironment, TypeTheoryAxiomClosure, TypeTheoryCheck, TypeTheoryType]
+SeeAlso: [MetamathImport, MetamathDatabase, MetamathVerify, TypeTheoryEnvironment, TypeTheoryAxiomClosure, TypeTheoryCheck, TypeTheoryType]
 RelatedGuides: [MetamathLink]
 RelatedTutorials: [MetamathInTypeTheory]
 ---
@@ -17,6 +17,10 @@ RelatedTutorials: [MetamathInTypeTheory]
 <code>[MetamathToTypeTheory]()[*object*]</code> imports the MetamathObject that the function resource MetamathImport gives.
 
 <code>[MetamathToTypeTheory]()[[File]()["*database*.wxf"]]</code> imports a database MetamathLink saved, with no network.
+
+<code>[MetamathToTypeTheory]()[*database*]</code> imports the [MetamathDatabase]() *database*.
+
+<code>[MetamathToTypeTheory]()[*database*, {*label1*, *label2*, ...}]</code> imports what the theorems *labeli* need, as the option `"Cone"` does.
 
 ## Details & Options
 
@@ -118,6 +122,16 @@ TypeTheoryAxiomClosure[TypeTheoryTerm["2p2e4", arithmetic]]
 ```
 
 <!-- => <|"propositionalExtensionality" -> "Proposition", "choice" -> "Signature", "quotientSoundness" -> "Proposition"|> -->
+
+---
+
+A [MetamathDatabase]() and the label of a theorem; what th1 needs of demo0:
+
+```wl
+MetamathToTypeTheory[MetamathImport[File[FileNameJoin[{PacletObject["WolframInstitute/MetamathLink"]["Location"], "Data", "demo0.mm"}]]], "th1"]
+```
+
+<!-- => TypeTheoryEnvironment summary box: 284 constants -->
 
 ## Possible Issues
 
